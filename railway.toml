@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "./Dockerfile"
 
 [deploy]
-startCommand = "pbi-dev serve --host 0.0.0.0 --port ${PORT:-8501}"
+startCommand = "pbi-dev serve --host 0.0.0.0"
 healthcheckPath = "/api/settings"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
