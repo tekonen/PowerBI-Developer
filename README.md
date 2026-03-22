@@ -110,6 +110,7 @@ pbi-dev validate "./output/Sales Dashboard.Report"
 | `pbi-dev connect` | Test connection to Power BI, Snowflake, or XMLA |
 | `pbi-dev rls` | Generate RLS rules from natural language + verified examples |
 | `pbi-dev refine` | Re-run a pipeline step with corrections and cascade downstream |
+| `pbi-dev graph` | Manage the persistent knowledge graph (show, clear, export, import) |
 | `pbi-dev serve` | Start the web GUI at http://localhost:8501 |
 
 ## Input Types
@@ -145,6 +146,21 @@ A video file of an existing dashboard walkthrough. Key frames are extracted via 
 ### Screenshot (`--image`)
 
 A direct screenshot or mockup image analyzed with Claude vision.
+
+### SVG Diagram (`--svg`)
+
+An SVG line drawing of a business information model or physical table relationships. The SVG is rasterized to PNG for Claude vision analysis and its text labels are extracted from the XML. A `DiagramInterpreterAgent` analyzes the diagram to extract entities, columns, and relationships, which are stored in a persistent knowledge graph (`~/.pbi-dev/knowledge_graph.json`). The graph accumulates across runs and supplements model metadata.
+
+```bash
+# Import a data model diagram and generate a report
+pbi-dev generate --brief brief.md --svg data_model.svg --dry-run
+
+# Import a diagram into the knowledge graph without running the pipeline
+pbi-dev graph import --path data_model.svg
+
+# View what's in the knowledge graph
+pbi-dev graph show
+```
 
 ### Model Metadata (`--model-metadata`)
 
@@ -301,6 +317,26 @@ The Generate wizard lets you:
 
 Pipeline progress for the full-pipeline mode is streamed in real-time via Server-Sent Events.
 
+## Knowledge Graph
+
+The tool maintains a persistent knowledge graph at `~/.pbi-dev/knowledge_graph.json` that stores entities (tables, business objects, columns, measures) and their relationships as a directed graph. The graph:
+
+- **Accumulates** across pipeline runs — each SVG import or metadata fetch enriches the existing graph
+- **Supplements** model metadata — when both `--model-metadata` and the graph exist, the graph adds supplementary relationship context
+- **Replaces** metadata when no other source is available — the graph can serve as the sole metadata source
+- **Supports path queries** — find how two entities connect through intermediate relationships
+
+Manage the graph via CLI:
+
+```bash
+pbi-dev graph show          # Display tables, relationships, entity count
+pbi-dev graph import --path diagram.svg   # Import SVG diagram
+pbi-dev graph export --path backup.json   # Export graph to JSON
+pbi-dev graph clear         # Reset the graph
+```
+
+The graph uses [NetworkX](https://networkx.org/) internally and persists as JSON using the `node_link_data` format.
+
 ## Version Control
 
 Every pipeline run and refinement automatically creates a git commit in `~/.pbi-dev/dashboard-versions/`. This provides:
@@ -363,7 +399,8 @@ src/pbi_developer/
 │   ├── qa.py            # Step 5: Validates wireframe (programmatic + AI)
 │   ├── pbir_generator.py # Step 6: Wireframe → PBIR models
 │   ├── dax_generator.py # Generates DAX measures from metric definitions
-│   └── rls.py           # Step 8: Natural language → RLS DAX filters
+│   ├── rls.py           # Step 8: Natural language → RLS DAX filters
+│   └── diagram_interpreter.py  # SVG diagram → entities + relationships
 ├── connectors/      # External system integrations
 │   ├── auth.py          # MSAL service principal authentication
 │   ├── snowflake.py     # Schema discovery
@@ -373,7 +410,8 @@ src/pbi_developer/
 │   ├── brief.py         # Text brief loader
 │   ├── pptx_parser.py   # PowerPoint shape extraction
 │   ├── video.py         # Video key frame extraction (OpenCV)
-│   └── image.py         # Screenshot loading and resizing
+│   ├── image.py         # Screenshot loading and resizing
+│   └── svg_parser.py    # SVG diagram parsing and rasterization
 ├── pbir/            # PBIR format handling
 │   ├── models.py        # Pydantic models (report, page, visual)
 │   ├── builder.py       # Assembles PBIR folder structure on disk
@@ -395,6 +433,7 @@ src/pbi_developer/
 │   ├── version_control.py # Git-backed undo/redo + Bitbucket push
 │   ├── templates/       # Jinja2 HTML templates (wizard steps, review partials)
 │   └── static/          # CSS + JavaScript (app.js, wizard.js, wireframe-mockup.js)
+├── knowledge_graph.py  # Persistent knowledge graph (networkx + JSON)
 ├── cli.py           # Typer CLI entry point
 └── config.py        # Settings loader (dotenv + YAML)
 ```

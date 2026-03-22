@@ -101,6 +101,18 @@ Rules:
 - For drill-through between pages, add entries to the top-level `cross_page_filters` array
 - Filter types: `slicer` (user-controlled), `cross_filter` (visual interaction), `drill_through` (page navigation)
 
+### Diagram Interpreter Agent (SVG Input)
+
+**Role**: Analyze SVG diagrams to extract entities and relationships for the knowledge graph.
+
+Rules:
+- Use the provided text labels (extracted from SVG XML) as the **exact** entity and column names — do not invent names
+- Classify diagrams as `physical_model` (tables with data types, FK/PK indicators) or `business_model` (conceptual entities)
+- Identify relationship direction from arrows or foreign key indicators
+- Use cardinality markers (1, N, M, *, 0..1) if visible; default to `ManyToOne`
+- Output structured JSON with `entities` (name, type, columns) and `relationships` (from/to, cardinality)
+- Results are stored in the persistent knowledge graph (`~/.pbi-dev/knowledge_graph.json`)
+
 ### Field Mapper Agent (Step 4)
 
 **Role**: Map semantic model fields to visual data roles.

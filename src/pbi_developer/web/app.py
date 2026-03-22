@@ -120,6 +120,7 @@ async def api_create_run(
     pptx: UploadFile | None = File(None),
     video: UploadFile | None = File(None),
     image: UploadFile | None = File(None),
+    svg: UploadFile | None = File(None),
     model_metadata: UploadFile | None = File(None),
     style_template: UploadFile | None = File(None),
     report_name: str = Form("Report"),
@@ -141,6 +142,7 @@ async def api_create_run(
         ("pptx", pptx),
         ("video", video),
         ("image", image),
+        ("svg", svg),
         ("model_metadata", model_metadata),
         ("style_template", style_template),
     ]:
@@ -336,6 +338,21 @@ async def api_download_output(run_id: str, file_path: str):
     return FileResponse(target)
 
 
+@app.get("/api/graph")
+async def api_graph():
+    """Return knowledge graph summary."""
+    from pbi_developer.knowledge_graph import KnowledgeGraphStore
+
+    kg = KnowledgeGraphStore()
+    return {
+        "node_count": kg.graph.number_of_nodes(),
+        "edge_count": kg.graph.number_of_edges(),
+        "tables": kg.get_tables(),
+        "relationships": kg.get_relationships(),
+        "brief_context": kg.to_brief_context(),
+    }
+
+
 @app.get("/api/settings")
 async def api_settings():
     """Return current configuration (secrets masked)."""
@@ -487,6 +504,8 @@ async def api_step_ingest(run_id: str):
                 inputs["video"] = path
             elif path.suffix in (".png", ".jpg", ".jpeg", ".gif", ".webp"):
                 inputs["image"] = path
+            elif path.suffix == ".svg":
+                inputs["svg"] = path
             elif path.name == "model_metadata.md":
                 inputs["model_metadata"] = path
             elif path.suffix == ".json" and "style" in path.name.lower():
