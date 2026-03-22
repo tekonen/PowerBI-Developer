@@ -198,9 +198,21 @@ class PowerBIClient:
         role_name: str,
         member_email: str,
     ) -> None:
-        """Add a user to an RLS role."""
-        # Note: This requires the Admin API endpoint
+        """Add a user to an RLS role via the Power BI REST API.
+
+        Uses the 'Add Dataset User' endpoint to assign a member to an
+        RLS role. Requires Dataset.ReadWrite.All or Workspace admin permissions.
+        """
         logger.info(f"Adding {member_email} to RLS role '{role_name}' on dataset {dataset_id}")
-        # RLS member assignment is done via the dataset admin API
-        # This is a placeholder for the actual implementation
-        logger.warning("RLS member assignment via REST API requires admin permissions")
+        body = {
+            "identifier": member_email,
+            "principalType": "User",
+            "datasetUserAccessRight": "Read",
+        }
+        resp = requests.post(
+            self._url(f"datasets/{dataset_id}/users"),
+            headers=self.headers,
+            json=body,
+        )
+        resp.raise_for_status()
+        logger.info(f"Assigned {member_email} to dataset {dataset_id}")

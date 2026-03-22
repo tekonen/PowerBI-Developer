@@ -73,11 +73,15 @@ def promote(
 
     if require_approval and target.name == "prod":
         logger.warning(f"Production promotion requires approval. Promoting from {from_stage} to {target.name}.")
-        # In a real implementation, this would:
-        # 1. Send notification to approvers
-        # 2. Wait for approval
-        # 3. Log the approval for audit
-        logger.info("Approval gate placeholder — proceeding")
+        return PromotionResult(
+            success=False,
+            source_stage=from_stage,
+            target_stage=target.name,
+            error=(
+                "Production promotion blocked: approval required. "
+                "Review the content, then re-run with require_approval=False."
+            ),
+        )
 
     try:
         from pbi_developer.connectors.powerbi_rest import PowerBIClient

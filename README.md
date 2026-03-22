@@ -277,10 +277,9 @@ card, clusteredBarChart, clusteredColumnChart, lineChart, areaChart, tableEx, pi
 
 - Complex cross-filtering logic and bookmark interactions are not supported
 - Custom visuals (AppSource or proprietary) are not generated
-- RLS member assignment requires admin-level API permissions
-- Iterative mid-flight stakeholder revision during design is not handled
-- Human review is always required before production deployment
-- XMLA direct connection requires platform-specific libraries; use `--model-metadata` as the cross-platform alternative
+- RLS member assignment requires Dataset.ReadWrite.All or workspace admin permissions
+- Human review is required before production deployment (enforced by review gate)
+- Direct XMLA endpoint queries require platform-specific libraries; the REST API executeQueries endpoint is used as a cross-platform alternative, or provide `--model-metadata`
 
 ## Development
 

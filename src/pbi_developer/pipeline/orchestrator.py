@@ -183,13 +183,35 @@ def run_pipeline(
         else:
             state.set_running("publishing")
             _notify("publishing", "running")
-            # Deployment would happen here
-            state.set_completed("publishing")
+            from pbi_developer.deployment.deployer import deploy_report
+
+            deploy_result = deploy_report(report_dir)
+            if deploy_result.success:
+                state.set_completed("publishing", {"report_id": deploy_result.report_id})
+                logger.info(f"Step 7 complete: Report published ({deploy_result.workspace_url})")
+            else:
+                state.set_failed("publishing", deploy_result.error)
+                logger.warning(f"Step 7: Publishing failed: {deploy_result.error}")
             _notify("publishing", "completed")
 
-        # Step 8: RLS (skipped unless explicitly configured)
-        state.set_skipped("rls")
-        _notify("rls", "completed")
+        # Step 8: RLS (run if requirements exist in brief)
+        rls_requirements = brief_data.get("rls_requirements", "")
+        rls_examples = brief_data.get("rls_examples", [])
+        if rls_requirements and model_metadata:
+            state.set_running("rls")
+            _notify("rls", "running")
+            from pbi_developer.agents.rls import RLSAgent
+
+            rls_agent = RLSAgent()
+            rls_result = rls_agent.generate_rls(rls_requirements, rls_examples, model_metadata)
+            _save_artifact(output_dir, "rls_config", rls_result)
+            state.set_completed("rls", {"rls": rls_result}, rls_agent.token_usage)
+            _notify("rls", "completed")
+            logger.info("Step 8 complete: RLS rules generated")
+        else:
+            state.set_skipped("rls")
+            _notify("rls", "completed")
+            logger.info("Step 8 skipped: No RLS requirements in brief")
 
         # Save pipeline state
         _save_state(state, output_dir)
@@ -561,9 +583,23 @@ def _step_2_connect_model(inputs: dict[str, Path], dry_run: bool) -> str:
         logger.warning("No model metadata provided in dry run mode. Using empty metadata.")
         return "# Semantic Model\n\nNo model metadata provided. Run with --model-metadata flag."
 
-    # Live mode: try XMLA endpoint
-    logger.warning("Live XMLA connection not yet implemented. Use --model-metadata flag.")
-    return "# Semantic Model\n\nLive XMLA connection not available."
+    # Live mode: try REST API metadata fetch
+    try:
+        from pbi_developer.connectors.powerbi_rest import PowerBIClient
+        from pbi_developer.connectors.xmla import fetch_metadata_via_rest
+
+        client = PowerBIClient()
+        datasets = client.list_datasets()
+        if datasets:
+            dataset_id = datasets[0]["id"]
+            logger.info(f"Fetching metadata for dataset {dataset_id} via REST API")
+            metadata = fetch_metadata_via_rest(dataset_id)
+            return metadata.to_markdown()
+        logger.warning("No datasets found in workspace. Use --model-metadata flag.")
+        return "# Semantic Model\n\nNo datasets found in workspace."
+    except Exception as e:
+        logger.warning(f"REST API metadata fetch failed: {e}. Use --model-metadata flag.")
+        return f"# Semantic Model\n\nMetadata fetch failed: {e}"
 
 
 def _load_style(style_path: Path | None) -> dict[str, Any] | None:

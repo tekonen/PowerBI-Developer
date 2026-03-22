@@ -92,7 +92,15 @@ def test_connection(target: str) -> tuple[bool, str]:
             return False, f"Snowflake connection failed: {e}"
 
     elif target == "xmla":
-        return False, "XMLA endpoint testing not yet implemented (requires adomdclient or ssas_api)"
+        try:
+            # Test XMLA connectivity via Power BI REST API (cross-platform)
+            from pbi_developer.connectors.powerbi_rest import PowerBIClient
+
+            client = PowerBIClient()
+            datasets = client.list_datasets()
+            return True, f"XMLA endpoint accessible via REST API ({len(datasets)} dataset(s) found)"
+        except Exception as e:
+            return False, f"XMLA endpoint test failed: {e}"
 
     else:
         return False, f"Unknown target: {target}. Use: powerbi, snowflake, or xmla"

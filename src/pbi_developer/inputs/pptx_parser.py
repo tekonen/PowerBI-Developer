@@ -85,8 +85,8 @@ def parse_pptx(path: Path) -> PptxParseResult:
                 try:
                     if shape.fill.fore_color and shape.fill.fore_color.rgb:
                         shape_info.fill_color = f"#{shape.fill.fore_color.rgb}"
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Could not extract fill color from shape '{shape.name}': {e}")
 
             slide_info.shapes.append(shape_info)
 

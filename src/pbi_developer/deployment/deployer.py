@@ -50,9 +50,15 @@ def deploy_report(
         )
 
     if settings.pipeline.require_human_review and stage == "prod":
-        logger.warning("Production deployment requires human review. Use --stage=dev for testing.")
-        # In a real implementation, this would prompt for confirmation
-        logger.info("Proceeding with deployment (human review gate placeholder)")
+        logger.warning("Production deployment requires human review.")
+        return DeployResult(
+            success=False,
+            error=(
+                "Production deployment blocked: human review is required. "
+                "Review the report, then re-run with --stage=prod after setting "
+                "PIPELINE_REQUIRE_HUMAN_REVIEW=false or updating config."
+            ),
+        )
 
     if method == "auto":
         method = "fabric-cicd"
