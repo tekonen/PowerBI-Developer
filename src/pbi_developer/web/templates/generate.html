@@ -3,107 +3,219 @@
 {% block title %}Generate Report — PBI Developer{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl">
+<div class="max-w-5xl">
     <h2 class="text-2xl font-bold text-gray-800 mb-6">Generate Report</h2>
 
-    <form id="generate-form" class="bg-white rounded-lg shadow p-6 space-y-6">
-        <!-- Report name and mode -->
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Report Name</label>
-                <input type="text" name="report_name" value="Report" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <div class="flex items-end">
-                <label class="flex items-center space-x-2 text-sm">
-                    <input type="checkbox" name="dry_run" checked class="rounded text-blue-600">
-                    <span>Dry Run (no live connections)</span>
-                </label>
-            </div>
-        </div>
+    {% set current_step = "init" %}
+    {% include "_partials/step_indicator.html" %}
 
-        <!-- File uploads -->
-        <div class="space-y-4">
-            <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider">Input Files</h3>
-
+    <!-- Step 0: Upload / Init -->
+    <div id="step-init" class="wizard-step">
+        <form id="generate-form" class="bg-white rounded-lg shadow p-6 space-y-6">
             <div class="grid grid-cols-2 gap-4">
-                <div class="upload-zone">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Requirements Brief</label>
-                    <input type="file" name="brief" accept=".md,.txt" class="file-input">
-                    <p class="text-xs text-gray-400 mt-1">.md or .txt</p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Report Name</label>
+                    <input type="text" name="report_name" value="Report" id="report-name-input"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
-                <div class="upload-zone">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Model Metadata</label>
-                    <input type="file" name="model_metadata" accept=".md,.txt" class="file-input">
-                    <p class="text-xs text-gray-400 mt-1">.md or .txt</p>
-                </div>
-                <div class="upload-zone">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">PowerPoint Mockup</label>
-                    <input type="file" name="pptx" accept=".pptx" class="file-input">
-                    <p class="text-xs text-gray-400 mt-1">.pptx (optional)</p>
-                </div>
-                <div class="upload-zone">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Screenshot / Image</label>
-                    <input type="file" name="image" accept="image/*" class="file-input">
-                    <p class="text-xs text-gray-400 mt-1">.png, .jpg (optional)</p>
-                </div>
-                <div class="upload-zone">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Screen Recording</label>
-                    <input type="file" name="video" accept="video/*" class="file-input">
-                    <p class="text-xs text-gray-400 mt-1">.mp4 (optional)</p>
-                </div>
-                <div class="upload-zone">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Style Template</label>
-                    <input type="file" name="style_template" accept=".json" class="file-input">
-                    <p class="text-xs text-gray-400 mt-1">.json (optional)</p>
+                <div class="flex items-end">
+                    <label class="flex items-center space-x-2 text-sm">
+                        <input type="checkbox" name="dry_run" checked class="rounded text-blue-600">
+                        <span>Dry Run (no live connections)</span>
+                    </label>
                 </div>
             </div>
+
+            <div class="space-y-4">
+                <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider">Input Files</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="upload-zone">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Requirements Brief</label>
+                        <input type="file" name="brief" accept=".md,.txt" class="file-input">
+                        <p class="text-xs text-gray-400 mt-1">.md or .txt</p>
+                    </div>
+                    <div class="upload-zone">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">PowerPoint Mockup</label>
+                        <input type="file" name="pptx" accept=".pptx" class="file-input">
+                        <p class="text-xs text-gray-400 mt-1">.pptx (optional)</p>
+                    </div>
+                    <div class="upload-zone">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Screenshot / Image</label>
+                        <input type="file" name="image" accept="image/*" class="file-input">
+                        <p class="text-xs text-gray-400 mt-1">.png, .jpg (optional)</p>
+                    </div>
+                    <div class="upload-zone">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Screen Recording</label>
+                        <input type="file" name="video" accept="video/*" class="file-input">
+                        <p class="text-xs text-gray-400 mt-1">.mp4 (optional)</p>
+                    </div>
+                    <div class="upload-zone">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Style Template</label>
+                        <input type="file" name="style_template" accept=".json" class="file-input">
+                        <p class="text-xs text-gray-400 mt-1">.json (optional)</p>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" id="upload-btn"
+                    class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium">
+                Upload &amp; Analyze Requirements
+            </button>
+        </form>
+    </div>
+
+    <!-- Step 1: Requirements Review -->
+    <div id="step-ingestion" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6">
+            {% include "_partials/brief_review.html" %}
+            <div id="ingestion-loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-500 mt-2">Analyzing requirements...</p>
+            </div>
         </div>
+    </div>
 
-        <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium">
-            Generate Report
-        </button>
-    </form>
+    <!-- Step 2: Semantic Model -->
+    <div id="step-metadata" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6">
+            {% include "_partials/metadata_browser.html" %}
+        </div>
+    </div>
 
-    {% include "_partials/progress.html" %}
+    <!-- Step 3: Wireframe -->
+    <div id="step-wireframe" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6">
+            {% include "_partials/wireframe_mockup.html" %}
+            <div id="wireframe-loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-500 mt-2">Designing wireframe...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4: Field Mapping -->
+    <div id="step-field_mapping" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6">
+            {% include "_partials/field_mapping_review.html" %}
+            <div id="field-mapping-loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-500 mt-2">Mapping fields...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 5: DAX Measures -->
+    <div id="step-dax" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6">
+            {% include "_partials/dax_review.html" %}
+            <div id="dax-loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-500 mt-2">Generating DAX measures...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 6: QA -->
+    <div id="step-qa" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">QA Validation</h3>
+            <div id="qa-result" class="hidden">
+                <div id="qa-passed" class="hidden bg-green-50 rounded-lg p-4">
+                    <h4 class="font-medium text-green-700">All checks passed</h4>
+                    <p class="text-sm text-green-600 mt-1" id="qa-summary"></p>
+                </div>
+                <div id="qa-failed" class="hidden bg-red-50 rounded-lg p-4">
+                    <h4 class="font-medium text-red-700">Validation Issues Found</h4>
+                    <p class="text-sm text-red-600 mt-1" id="qa-fail-summary"></p>
+                    <ul id="qa-issues-list" class="mt-2 text-sm space-y-1"></ul>
+                </div>
+            </div>
+            <div id="qa-loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-500 mt-2">Running QA validation...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 7: PBIR -->
+    <div id="step-pbir" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">PBIR Generation</h3>
+            <div id="pbir-result" class="hidden bg-green-50 rounded-lg p-4">
+                <h4 class="font-medium text-green-700">Report Generated</h4>
+                <p class="text-sm text-green-600 mt-1">Output directory: <code id="pbir-path"></code></p>
+            </div>
+            <div id="pbir-loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-500 mt-2">Generating PBIR output...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 8: RLS -->
+    <div id="step-rls" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6">
+            {% include "_partials/rls_review.html" %}
+            <div id="rls-loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="text-sm text-gray-500 mt-2">Generating RLS configuration...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 9: Publish -->
+    <div id="step-publish" class="wizard-step hidden">
+        <div class="bg-white rounded-lg shadow p-6 text-center">
+            <h3 class="text-lg font-semibold mb-4">Report Complete</h3>
+            <p class="text-gray-600 mb-6">Your Power BI report has been generated and version-controlled.</p>
+            <div class="flex justify-center space-x-4">
+                <a href="/" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 text-sm">View in Dashboard</a>
+                <a href="/deploy" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 text-sm">Deploy to Power BI</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Correction / action bar (shown for interactive steps) -->
+    <div id="wizard-action-bar" class="hidden mt-4 bg-white rounded-lg shadow p-4">
+        <div class="flex items-center space-x-3 mb-3">
+            <button type="button" onclick="wizardUndo()" id="wizard-undo-btn"
+                    class="px-3 py-1.5 border rounded text-sm text-gray-600 hover:bg-gray-50">Undo</button>
+            <button type="button" onclick="wizardRedo()" id="wizard-redo-btn"
+                    class="px-3 py-1.5 border rounded text-sm text-gray-600 hover:bg-gray-50">Redo</button>
+            <div class="flex-1"></div>
+            <span class="text-xs text-gray-400" id="wizard-version-info"></span>
+        </div>
+        <div id="correction-area" class="hidden mb-3">
+            <textarea id="correction-input" rows="3" placeholder="Describe what to change..."
+                      class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+        <div class="flex justify-between items-center">
+            <button type="button" onclick="toggleCorrections()" id="correct-toggle-btn"
+                    class="hidden px-4 py-2 border border-blue-600 text-blue-600 rounded-lg text-sm hover:bg-blue-50">
+                Suggest Changes
+            </button>
+            <button type="button" onclick="submitCorrections()" id="submit-corrections-btn"
+                    class="hidden px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                Re-run with Changes
+            </button>
+            <div class="flex-1"></div>
+            <button type="button" onclick="skipStep()" id="skip-step-btn"
+                    class="hidden px-4 py-2 text-gray-500 text-sm hover:text-gray-700 mr-2">
+                Skip
+            </button>
+            <button type="button" onclick="acceptStep()" id="accept-btn"
+                    class="px-6 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 font-medium">
+                Accept &amp; Continue
+            </button>
+        </div>
+    </div>
+
+    <!-- Error display -->
+    <div id="wizard-error" class="hidden mt-4 bg-red-50 rounded-lg p-4 text-red-700 text-sm"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.getElementById('generate-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const btn = document.getElementById('generate-btn');
-    btn.disabled = true;
-    btn.textContent = 'Starting...';
-    btn.classList.add('opacity-50');
-
-    const formData = new FormData(form);
-    // Handle checkbox: if checked send true, if unchecked send false
-    if (!form.querySelector('[name=dry_run]').checked) {
-        formData.set('dry_run', 'false');
-    } else {
-        formData.set('dry_run', 'true');
-    }
-
-    try {
-        const resp = await fetch('/api/runs', { method: 'POST', body: formData });
-        const data = await resp.json();
-        if (data.error) {
-            showResult('error', data.error);
-            btn.disabled = false;
-            btn.textContent = 'Generate Report';
-            btn.classList.remove('opacity-50');
-            return;
-        }
-        showProgress();
-        connectSSE(data.run_id);
-    } catch (err) {
-        showResult('error', 'Failed to start pipeline: ' + err.message);
-        btn.disabled = false;
-        btn.textContent = 'Generate Report';
-        btn.classList.remove('opacity-50');
-    }
-});
-</script>
+<script src="/static/wireframe-mockup.js"></script>
+<script src="/static/wizard.js"></script>
 {% endblock %}

@@ -1,0 +1,48 @@
+<!-- Wireframe mockup display with filtering logic -->
+<div id="wireframe-review" class="hidden">
+    <h3 class="text-lg font-semibold mb-4">Wireframe Design</h3>
+
+    <!-- Page tabs -->
+    <div id="wireframe-page-tabs" class="flex space-x-2 mb-4 border-b"></div>
+
+    <!-- Mockup canvas -->
+    <div id="wireframe-canvas-container" class="bg-gray-100 rounded-lg p-4 mb-6">
+        <div id="wireframe-canvas" class="relative mx-auto bg-white shadow-lg" style="max-width:100%;">
+            <!-- Visuals rendered here by wireframe-mockup.js -->
+        </div>
+    </div>
+
+    <!-- Filtering logic table -->
+    <div id="filter-logic-section" class="mb-6">
+        <h4 class="font-medium text-gray-700 mb-2">Filtering Logic</h4>
+        <div id="filter-logic-empty" class="hidden text-sm text-gray-400 italic">No filter relationships defined for this page.</div>
+        <table id="filter-logic-table" class="hidden w-full text-sm border">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-3 py-2 text-left">Slicer</th>
+                    <th class="px-3 py-2 text-left">Affected Visuals</th>
+                    <th class="px-3 py-2 text-left">Field</th>
+                    <th class="px-3 py-2 text-left">Type</th>
+                    <th class="px-3 py-2 text-left">Description</th>
+                </tr>
+            </thead>
+            <tbody id="filter-logic-body"></tbody>
+        </table>
+    </div>
+
+    <!-- Cross-page filters -->
+    <div id="cross-page-filters-section" class="hidden mb-6">
+        <h4 class="font-medium text-gray-700 mb-2">Cross-Page Filters</h4>
+        <table id="cross-page-filter-table" class="w-full text-sm border">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-3 py-2 text-left">From Page</th>
+                    <th class="px-3 py-2 text-left">To Page</th>
+                    <th class="px-3 py-2 text-left">Type</th>
+                    <th class="px-3 py-2 text-left">Description</th>
+                </tr>
+            </thead>
+            <tbody id="cross-page-filter-body"></tbody>
+        </table>
+    </div>
+</div>
