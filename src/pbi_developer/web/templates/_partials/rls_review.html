@@ -1,0 +1,35 @@
+<!-- RLS configuration review panel -->
+<div id="rls-review" class="hidden">
+    <h3 class="text-lg font-semibold mb-4">Row-Level Security</h3>
+
+    <!-- Roles -->
+    <div id="rls-roles" class="space-y-4"></div>
+
+    <!-- Validation results -->
+    <div id="rls-validation-section" class="mt-6">
+        <h4 class="font-medium text-gray-700 mb-2">Validation Results</h4>
+        <table id="rls-validation-table" class="w-full text-sm border">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-3 py-2 text-left">User</th>
+                    <th class="px-3 py-2 text-left">Expected Access</th>
+                    <th class="px-3 py-2 text-left">Result</th>
+                    <th class="px-3 py-2 text-left">Status</th>
+                </tr>
+            </thead>
+            <tbody id="rls-validation-body"></tbody>
+        </table>
+    </div>
+
+    <!-- TMDL output -->
+    <div id="rls-tmdl-section" class="hidden mt-6">
+        <h4 class="font-medium text-gray-700 mb-2">TMDL Role Definition</h4>
+        <pre id="rls-tmdl-content" class="bg-gray-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto"></pre>
+    </div>
+
+    <!-- Warnings -->
+    <div id="rls-warnings" class="hidden mt-4 bg-yellow-50 rounded-lg p-4">
+        <h4 class="font-medium text-yellow-700 mb-2">Warnings</h4>
+        <ul id="rls-warnings-list" class="text-sm space-y-1"></ul>
+    </div>
+</div>

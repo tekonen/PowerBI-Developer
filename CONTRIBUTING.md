@@ -66,6 +66,35 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 4. Wire it into the orchestrator in `src/pbi_developer/pipeline/orchestrator.py`
 5. Add tests in `tests/test_agents/test_my_agent.py` using `pytest-mock` to patch API calls
 
+## Web Module Development
+
+The web GUI (`src/pbi_developer/web/`) is a FastAPI app with a Jinja2-templated frontend.
+
+### Architecture
+
+- **`app.py`** — All API endpoints: page routes, run management, wizard step endpoints, dataset browser, version control
+- **`templates/generate.html`** — Multi-step wizard with 10 step panels (init through publish)
+- **`templates/_partials/`** — Step-specific review panels: `brief_review.html`, `metadata_browser.html`, `wireframe_mockup.html`, `field_mapping_review.html`, `dax_review.html`, `rls_review.html`, `step_indicator.html`
+- **`static/wizard.js`** — Wizard navigation, step execution, correction flow, undo/redo integration
+- **`static/wireframe-mockup.js`** — Client-side wireframe mockup renderer with filtering logic display
+- **`static/app.js`** — Shared utilities: SSE client, progress UI, file browser
+
+### Adding a New Wizard Step
+
+1. Add a step runner function in `src/pbi_developer/pipeline/orchestrator.py` (e.g., `run_step_my_stage()`)
+2. Add the step name to `WIZARD_STEPS` in `src/pbi_developer/web/models.py`
+3. Add a `POST /api/runs/{run_id}/step/my-stage` endpoint in `app.py`
+4. If correctable, add the stage to `step_runners` dict in `api_step_correct`
+5. Create a review partial: `templates/_partials/my_stage_review.html`
+6. Add a step panel in `generate.html` with `id="step-my_stage"`
+7. Add rendering logic in `wizard.js` (`renderStepData` switch case)
+8. Add tests in `tests/test_web/test_wizard.py`
+
+### Wizard vs Full Pipeline
+
+- `POST /api/runs` with `wizard=true` creates a run and saves uploads without starting the pipeline. The wizard drives execution step-by-step.
+- `POST /api/runs` without `wizard` (or `wizard=false`) starts the full 8-stage pipeline as before — used by the CLI and backward-compatible API consumers.
+
 ## PR Process
 
 1. Branch from `main`

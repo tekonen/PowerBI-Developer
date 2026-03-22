@@ -28,7 +28,10 @@ class BaseAgent:
     agent_name: str = "base"
 
     def __init__(self, model: str | None = None, max_tokens: int | None = None):
-        self.client = anthropic.Anthropic(api_key=settings.claude.api_key)
+        client_kwargs: dict[str, Any] = {"api_key": settings.claude.api_key}
+        if settings.claude.base_url:
+            client_kwargs["base_url"] = settings.claude.base_url
+        self.client = anthropic.Anthropic(**client_kwargs)
         self.model = model or settings.claude.model
         self.max_tokens = max_tokens or settings.claude.max_tokens
         self._total_input_tokens = 0

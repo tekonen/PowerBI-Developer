@@ -25,10 +25,17 @@ semantic model metadata, you design precise report wireframes.
 Your wireframe output must include:
 1. Exact page definitions with dimensions
 2. For each page, exact visual definitions with:
+   - A unique visual_id (format: p{{page_num}}_v{{visual_num}}, e.g. "p1_v1", "p1_v2")
    - Visual type (using Power BI native type names)
    - Position (x, y) and size (width, height) in pixels on a {page_width}x{page_height} canvas
    - Data intent (what the visual shows, which question it answers)
    - A position that doesn't overlap with other visuals on the same page
+3. For each page, a filters array describing filter relationships:
+   - For every slicer visual, list which other visuals it filters
+   - Include the field being filtered and a plain-language description
+   - Filter types: "slicer" (user-controlled), "cross_filter" (visual interaction),
+     "drill_through" (navigation between pages)
+4. A cross_page_filters array for filters that span multiple pages
 
 Layout rules:
 - Canvas size: {page_width}x{page_height} pixels
@@ -63,6 +70,7 @@ WIREFRAME_SCHEMA: dict[str, Any] = {
                         "items": {
                             "type": "object",
                             "properties": {
+                                "visual_id": {"type": "string"},
                                 "visual_type": {"type": "string"},
                                 "title": {"type": "string"},
                                 "description": {"type": "string"},
@@ -72,11 +80,49 @@ WIREFRAME_SCHEMA: dict[str, Any] = {
                                 "width": {"type": "integer"},
                                 "height": {"type": "integer"},
                             },
-                            "required": ["visual_type", "data_intent", "x", "y", "width", "height"],
+                            "required": ["visual_id", "visual_type", "data_intent", "x", "y", "width", "height"],
+                        },
+                    },
+                    "filters": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "slicer_visual_id": {"type": "string"},
+                                "target_visual_ids": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "filter_field": {"type": "string"},
+                                "filter_type": {
+                                    "type": "string",
+                                    "enum": ["slicer", "cross_filter", "drill_through"],
+                                },
+                                "description": {"type": "string"},
+                            },
+                            "required": ["slicer_visual_id", "target_visual_ids", "filter_type", "description"],
                         },
                     },
                 },
                 "required": ["page_name", "visuals"],
+            },
+        },
+        "cross_page_filters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "source_page": {"type": "string"},
+                    "source_visual_id": {"type": "string"},
+                    "target_page": {"type": "string"},
+                    "target_visual_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "filter_type": {"type": "string"},
+                    "description": {"type": "string"},
+                },
+                "required": ["source_page", "target_page", "filter_type", "description"],
             },
         },
     },

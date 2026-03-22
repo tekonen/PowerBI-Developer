@@ -100,6 +100,45 @@ class SemanticModelMetadata:
 
         return "\n".join(lines)
 
+    def to_dict(self) -> dict:
+        """Convert to a JSON-serializable dict for API responses."""
+        return {
+            "model_name": self.model_name,
+            "tables": self.tables,
+            "columns": [
+                {
+                    "name": c.name,
+                    "table": c.table,
+                    "data_type": c.data_type,
+                    "description": c.description,
+                    "is_hidden": c.is_hidden,
+                }
+                for c in self.columns
+            ],
+            "measures": [
+                {
+                    "name": m.name,
+                    "table": m.table,
+                    "expression": m.expression,
+                    "description": m.description,
+                    "format_string": m.format_string,
+                    "is_hidden": m.is_hidden,
+                }
+                for m in self.measures
+            ],
+            "relationships": [
+                {
+                    "from_table": r.from_table,
+                    "from_column": r.from_column,
+                    "to_table": r.to_table,
+                    "to_column": r.to_column,
+                    "cardinality": r.cardinality,
+                    "cross_filter": r.cross_filter,
+                }
+                for r in self.relationships
+            ],
+        }
+
 
 def load_metadata_from_file(path: Path) -> str:
     """Load model metadata from a markdown file (dry run mode).

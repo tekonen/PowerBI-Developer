@@ -6,6 +6,19 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+WIZARD_STEPS = [
+    "init",
+    "ingestion",
+    "metadata",
+    "wireframe",
+    "field_mapping",
+    "dax",
+    "qa",
+    "pbir",
+    "rls",
+    "publish",
+]
+
 
 class RunInfo(BaseModel):
     """Metadata for a single pipeline run."""
@@ -19,6 +32,7 @@ class RunInfo(BaseModel):
     output_path: str | None = None
     tokens: dict[str, int] = Field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0})
     error: str | None = None
+    wizard_step: str = "init"
 
 
 class RefineRequest(BaseModel):
@@ -36,3 +50,15 @@ class DeployRequest(BaseModel):
     workspace_id: str | None = None
     stage: str = "dev"
     method: str = "auto"
+
+
+class StepCorrectRequest(BaseModel):
+    """Request body for correcting a wizard step."""
+
+    corrections: str
+
+
+class MetadataFetchRequest(BaseModel):
+    """Request body for fetching metadata from a Power BI dataset."""
+
+    dataset_id: str

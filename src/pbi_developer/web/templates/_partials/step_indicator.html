@@ -1,0 +1,29 @@
+<!-- Horizontal wizard step indicator -->
+<div id="step-indicator" class="flex items-center justify-between mb-8 px-2">
+    {% set steps = [
+        ("init", "Upload"),
+        ("ingestion", "Requirements"),
+        ("metadata", "Model"),
+        ("wireframe", "Wireframe"),
+        ("field_mapping", "Fields"),
+        ("dax", "DAX"),
+        ("qa", "QA"),
+        ("pbir", "PBIR"),
+        ("rls", "RLS"),
+        ("publish", "Publish"),
+    ] %}
+    {% for key, label in steps %}
+    <div class="flex flex-col items-center step-item" data-step="{{ key }}">
+        <div class="step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+            {% if key == current_step %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-500{% endif %}"
+            id="step-dot-{{ key }}">
+            {{ loop.index }}
+        </div>
+        <span class="text-xs mt-1 {% if key == current_step %}text-blue-700 font-semibold{% else %}text-gray-400{% endif %}"
+              id="step-label-{{ key }}">{{ label }}</span>
+    </div>
+    {% if not loop.last %}
+    <div class="flex-1 h-0.5 bg-gray-200 mx-1 step-line" id="step-line-{{ key }}"></div>
+    {% endif %}
+    {% endfor %}
+</div>

@@ -645,3 +645,262 @@ def _save_state(state: PipelineState, output_dir: Path) -> None:
         }
 
     write_json(output_dir / "pipeline_state.json", state_data)
+
+
+# ---------- Wizard step-runner functions ----------
+# Each runs a single pipeline stage, reading inputs from and writing outputs
+# to the artifacts directory. Used by the web wizard for interactive step-by-step
+# execution. The existing run_pipeline() is unchanged for CLI use.
+
+
+def run_step_ingest(
+    *,
+    inputs: dict[str, Path],
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Run only the ingestion stage, returning the structured brief."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    brief_data = _step_1_ingest(inputs)
+    _save_artifact(output_dir, "brief", brief_data)
+    logger.info("Wizard step: ingestion complete")
+    return brief_data
+
+
+def run_step_metadata_from_file(
+    *,
+    file_path: Path,
+    output_dir: Path,
+) -> str:
+    """Load model metadata from an uploaded file and save as artifact."""
+    from pbi_developer.connectors.xmla import load_metadata_from_file
+
+    output_dir = Path(output_dir)
+    metadata_text = load_metadata_from_file(file_path)
+    _save_text_artifact(output_dir, "model_metadata", metadata_text)
+    logger.info("Wizard step: metadata loaded from file")
+    return metadata_text
+
+
+def run_step_metadata_from_dataset(
+    *,
+    dataset_id: str,
+    output_dir: Path,
+) -> str:
+    """Fetch model metadata from a Power BI dataset and save as artifact."""
+    from pbi_developer.connectors.xmla import fetch_metadata_via_rest
+
+    output_dir = Path(output_dir)
+    metadata = fetch_metadata_via_rest(dataset_id)
+    metadata_text = metadata.to_markdown()
+    _save_text_artifact(output_dir, "model_metadata", metadata_text)
+    logger.info(f"Wizard step: metadata fetched for dataset {dataset_id}")
+    return metadata_text
+
+
+def run_step_wireframe(
+    *,
+    output_dir: Path,
+    corrections: str | None = None,
+) -> dict[str, Any]:
+    """Run the wireframe design stage from saved artifacts."""
+    from pbi_developer.agents.wireframe import WireframeAgent
+    from pbi_developer.utils.files import read_json
+
+    output_dir = Path(output_dir)
+    artifacts = output_dir / "artifacts"
+
+    brief = read_json(artifacts / "brief.json")
+    model_metadata_path = artifacts / "model_metadata.md"
+    model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else None
+
+    style_path = artifacts / "style.json"
+    style = read_json(style_path) if style_path.exists() else None
+
+    previous = read_json(artifacts / "wireframe.json") if (artifacts / "wireframe.json").exists() else None
+
+    agent = WireframeAgent()
+    wireframe = agent.design(
+        brief,
+        model_metadata=model_metadata,
+        style=style,
+        corrections=corrections,
+        previous_output=previous if corrections else None,
+    )
+    _save_artifact(output_dir, "wireframe", wireframe)
+    if style is not None:
+        _save_artifact(output_dir, "style", style)
+    logger.info("Wizard step: wireframe complete")
+    return wireframe
+
+
+def run_step_field_mapping(
+    *,
+    output_dir: Path,
+    corrections: str | None = None,
+) -> dict[str, Any]:
+    """Run the field mapping stage from saved artifacts."""
+    from pbi_developer.agents.field_mapper import FieldMapperAgent
+    from pbi_developer.utils.files import read_json
+
+    output_dir = Path(output_dir)
+    artifacts = output_dir / "artifacts"
+
+    wireframe = read_json(artifacts / "wireframe.json")
+    model_metadata_path = artifacts / "model_metadata.md"
+    model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
+
+    previous = (
+        read_json(artifacts / "field_mapped.json") if (artifacts / "field_mapped.json").exists() else None
+    )
+
+    mapper = FieldMapperAgent()
+    field_mapped = mapper.map_fields(
+        wireframe,
+        model_metadata,
+        corrections=corrections,
+        previous_output=previous if corrections else None,
+    )
+    _save_artifact(output_dir, "field_mapped", field_mapped)
+    logger.info("Wizard step: field mapping complete")
+    return field_mapped
+
+
+def run_step_dax(
+    *,
+    output_dir: Path,
+    corrections: str | None = None,
+) -> dict[str, Any]:
+    """Run the DAX measure generation stage from saved artifacts."""
+    from pbi_developer.agents.dax_generator import DaxGeneratorAgent
+    from pbi_developer.utils.files import read_json
+
+    output_dir = Path(output_dir)
+    artifacts = output_dir / "artifacts"
+
+    brief = read_json(artifacts / "brief.json")
+    model_metadata_path = artifacts / "model_metadata.md"
+    model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
+
+    previous = (
+        read_json(artifacts / "dax_measures.json") if (artifacts / "dax_measures.json").exists() else None
+    )
+
+    metric_definitions = brief.get("kpis", [])
+    agent = DaxGeneratorAgent()
+    dax_result = agent.generate_measures(
+        metric_definitions,
+        model_metadata,
+        corrections=corrections,
+        previous_output=previous if corrections else None,
+    )
+    _save_artifact(output_dir, "dax_measures", dax_result)
+    logger.info("Wizard step: DAX generation complete")
+    return dax_result
+
+
+def run_step_qa(*, output_dir: Path) -> dict[str, Any]:
+    """Run QA validation from saved artifacts."""
+    from pbi_developer.agents.field_mapper import FieldMapperAgent
+    from pbi_developer.agents.qa import QAAgent
+    from pbi_developer.utils.files import read_json
+
+    output_dir = Path(output_dir)
+    artifacts = output_dir / "artifacts"
+
+    field_mapped = read_json(artifacts / "field_mapped.json")
+    wireframe = read_json(artifacts / "wireframe.json")
+    model_metadata_path = artifacts / "model_metadata.md"
+    model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
+
+    qa_agent = QAAgent()
+    max_retries = settings.pipeline.max_qa_retries
+
+    for attempt in range(max_retries + 1):
+        qa_result = qa_agent.validate(field_mapped, model_metadata)
+        if qa_result.passed:
+            break
+        if attempt < max_retries:
+            logger.warning(f"QA failed (attempt {attempt + 1}/{max_retries + 1}), retrying field mapping...")
+            mapper = FieldMapperAgent()
+            field_mapped = mapper.map_fields(wireframe, model_metadata)
+        else:
+            logger.error("QA failed after max retries")
+
+    _save_artifact(output_dir, "field_mapped", field_mapped)
+    result = {
+        "passed": qa_result.passed,
+        "summary": qa_result.summary,
+        "issues": [
+            {"severity": i.severity, "visual_id": i.visual_id, "description": i.description}
+            for i in qa_result.issues
+        ],
+    }
+    logger.info(f"Wizard step: QA {'passed' if qa_result.passed else 'failed'}")
+    return result
+
+
+def run_step_pbir(
+    *,
+    output_dir: Path,
+    report_name: str = "Report",
+) -> str:
+    """Run PBIR generation from saved artifacts. Returns report directory path."""
+    from pbi_developer.agents.pbir_generator import generate_pbir_report
+    from pbi_developer.pbir.builder import build_pbir_folder
+    from pbi_developer.utils.files import read_json
+
+    output_dir = Path(output_dir)
+    artifacts = output_dir / "artifacts"
+
+    field_mapped = read_json(artifacts / "field_mapped.json")
+    style_path = artifacts / "style.json"
+    style = read_json(style_path) if style_path.exists() else None
+
+    report = generate_pbir_report(field_mapped, report_name=report_name, style=style)
+    report_dir = build_pbir_folder(report, output_dir)
+
+    from pbi_developer.pbir.validator import validate_pbir_folder
+
+    validation = validate_pbir_folder(report_dir)
+    if not validation.valid:
+        logger.warning(f"PBIR validation issues: {validation.errors}")
+
+    logger.info(f"Wizard step: PBIR generated at {report_dir}")
+    return str(report_dir)
+
+
+def run_step_rls(
+    *,
+    output_dir: Path,
+    corrections: str | None = None,
+) -> dict[str, Any]:
+    """Run RLS generation from saved artifacts."""
+    from pbi_developer.agents.rls import RLSAgent
+    from pbi_developer.utils.files import read_json
+
+    output_dir = Path(output_dir)
+    artifacts = output_dir / "artifacts"
+
+    brief = read_json(artifacts / "brief.json")
+    model_metadata_path = artifacts / "model_metadata.md"
+    model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
+
+    previous = (
+        read_json(artifacts / "rls_config.json") if (artifacts / "rls_config.json").exists() else None
+    )
+
+    rls_requirements = brief.get("rls_requirements", "")
+    rls_examples = brief.get("rls_examples", [])
+
+    agent = RLSAgent()
+    rls_result = agent.generate_rls(
+        rls_requirements,
+        rls_examples,
+        model_metadata,
+        corrections=corrections,
+        previous_output=previous if corrections else None,
+    )
+    _save_artifact(output_dir, "rls_config", rls_result)
+    logger.info("Wizard step: RLS generation complete")
+    return rls_result

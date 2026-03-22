@@ -244,6 +244,7 @@ Deployment methods:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Claude Sonnet API key |
+| `ANTHROPIC_BASE_URL` | No | Custom API endpoint URL (for proxies or compatible APIs) |
 | `AZURE_TENANT_ID` | For deployment | Azure AD / Entra ID tenant |
 | `AZURE_CLIENT_ID` | For deployment | Service principal app ID |
 | `AZURE_CLIENT_SECRET` | For deployment | Service principal secret |
@@ -285,13 +286,20 @@ Open `http://localhost:8501`. The GUI provides:
 | Page | Purpose |
 |------|---------|
 | **Dashboard** | View run history, status, token usage, quick actions |
-| **Generate** | Upload files, configure parameters, watch real-time pipeline progress |
+| **Generate** | Interactive 9-step wizard: upload → requirements review → semantic model browser → wireframe mockup → field mapping → DAX measures → QA → PBIR → RLS → publish. Each step is reviewable, correctable, and version-controlled. |
 | **Refine** | Select a previous run, pick a stage, enter corrections |
 | **Deploy** | Deploy completed reports to Power BI Service |
 | **Versions** | Git-backed version history with undo/redo and Bitbucket push |
-| **Settings** | View configuration (masked secrets), test connections |
+| **Settings** | View configuration (masked secrets, API endpoint), test connections |
 
-Pipeline progress is streamed in real-time via Server-Sent Events.
+The Generate wizard lets you:
+- **Browse Power BI datasets** interactively and preview metadata (tables, columns, measures, relationships) before selecting a semantic model
+- **Review wireframe mockups** with visual boxes showing layout, types, and positions
+- **See filtering logic** explained in plain language (which slicers filter which visuals, cross-page drill-through)
+- **Correct any step** by providing natural language feedback, then re-run
+- **Accept & version-control** each step with git-backed undo/redo
+
+Pipeline progress for the full-pipeline mode is streamed in real-time via Server-Sent Events.
 
 ## Version Control
 
@@ -322,7 +330,8 @@ card, clusteredBarChart, clusteredColumnChart, lineChart, areaChart, tableEx, pi
 
 ## Known Limitations
 
-- Complex cross-filtering logic and bookmark interactions are not supported
+- Bookmark interactions and complex conditional visibility are not supported
+- Filtering logic (slicer relationships, cross-page drill-through) is generated and explained in the wireframe, but cannot be visually simulated
 - Custom visuals (AppSource or proprietary) are not generated
 - RLS member assignment requires Dataset.ReadWrite.All or workspace admin permissions
 - Human review is required before production deployment (enforced by review gate)
@@ -384,8 +393,8 @@ src/pbi_developer/
 │   ├── run_store.py     # Run history persistence
 │   ├── sse.py           # Server-Sent Events bridge
 │   ├── version_control.py # Git-backed undo/redo + Bitbucket push
-│   ├── templates/       # Jinja2 HTML templates
-│   └── static/          # CSS + JavaScript
+│   ├── templates/       # Jinja2 HTML templates (wizard steps, review partials)
+│   └── static/          # CSS + JavaScript (app.js, wizard.js, wireframe-mockup.js)
 ├── cli.py           # Typer CLI entry point
 └── config.py        # Settings loader (dotenv + YAML)
 ```
