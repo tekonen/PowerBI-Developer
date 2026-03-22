@@ -750,9 +750,7 @@ def run_step_field_mapping(
     model_metadata_path = artifacts / "model_metadata.md"
     model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
 
-    previous = (
-        read_json(artifacts / "field_mapped.json") if (artifacts / "field_mapped.json").exists() else None
-    )
+    previous = read_json(artifacts / "field_mapped.json") if (artifacts / "field_mapped.json").exists() else None
 
     mapper = FieldMapperAgent()
     field_mapped = mapper.map_fields(
@@ -782,9 +780,7 @@ def run_step_dax(
     model_metadata_path = artifacts / "model_metadata.md"
     model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
 
-    previous = (
-        read_json(artifacts / "dax_measures.json") if (artifacts / "dax_measures.json").exists() else None
-    )
+    previous = read_json(artifacts / "dax_measures.json") if (artifacts / "dax_measures.json").exists() else None
 
     metric_definitions = brief.get("kpis", [])
     agent = DaxGeneratorAgent()
@@ -832,8 +828,7 @@ def run_step_qa(*, output_dir: Path) -> dict[str, Any]:
         "passed": qa_result.passed,
         "summary": qa_result.summary,
         "issues": [
-            {"severity": i.severity, "visual_id": i.visual_id, "description": i.description}
-            for i in qa_result.issues
+            {"severity": i.severity, "visual_id": i.visual_id, "description": i.description} for i in qa_result.issues
         ],
     }
     logger.info(f"Wizard step: QA {'passed' if qa_result.passed else 'failed'}")
@@ -886,9 +881,7 @@ def run_step_rls(
     model_metadata_path = artifacts / "model_metadata.md"
     model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
 
-    previous = (
-        read_json(artifacts / "rls_config.json") if (artifacts / "rls_config.json").exists() else None
-    )
+    previous = read_json(artifacts / "rls_config.json") if (artifacts / "rls_config.json").exists() else None
 
     rls_requirements = brief.get("rls_requirements", "")
     rls_examples = brief.get("rls_examples", [])

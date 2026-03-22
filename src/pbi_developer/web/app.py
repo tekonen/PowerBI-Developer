@@ -498,9 +498,7 @@ async def api_step_ingest(run_id: str):
     try:
         from pbi_developer.pipeline.orchestrator import run_step_ingest
 
-        brief = await asyncio.to_thread(
-            run_step_ingest, inputs=inputs, output_dir=output_dir
-        )
+        brief = await asyncio.to_thread(run_step_ingest, inputs=inputs, output_dir=output_dir)
         store.update_run(run_id, wizard_step="ingestion", status="running")
         return {"brief": brief}
     except Exception as e:
@@ -527,9 +525,7 @@ async def api_step_metadata_upload(
     try:
         from pbi_developer.pipeline.orchestrator import run_step_metadata_from_file
 
-        metadata_text = await asyncio.to_thread(
-            run_step_metadata_from_file, file_path=path, output_dir=output_dir
-        )
+        metadata_text = await asyncio.to_thread(run_step_metadata_from_file, file_path=path, output_dir=output_dir)
         store.update_run(run_id, wizard_step="metadata")
         return {"metadata": metadata_text}
     except Exception as e:
@@ -571,9 +567,7 @@ async def api_step_wireframe(run_id: str):
     try:
         from pbi_developer.pipeline.orchestrator import run_step_wireframe
 
-        wireframe = await asyncio.to_thread(
-            run_step_wireframe, output_dir=output_dir
-        )
+        wireframe = await asyncio.to_thread(run_step_wireframe, output_dir=output_dir)
         store.update_run(run_id, wizard_step="wireframe")
         return {"wireframe": wireframe}
     except Exception as e:
@@ -592,9 +586,7 @@ async def api_step_field_mapping(run_id: str):
     try:
         from pbi_developer.pipeline.orchestrator import run_step_field_mapping
 
-        field_mapped = await asyncio.to_thread(
-            run_step_field_mapping, output_dir=output_dir
-        )
+        field_mapped = await asyncio.to_thread(run_step_field_mapping, output_dir=output_dir)
         store.update_run(run_id, wizard_step="field_mapping")
         return {"field_mapped": field_mapped}
     except Exception as e:
@@ -651,9 +643,7 @@ async def api_step_pbir(run_id: str):
     try:
         from pbi_developer.pipeline.orchestrator import run_step_pbir
 
-        report_dir = await asyncio.to_thread(
-            run_step_pbir, output_dir=output_dir, report_name=run.report_name
-        )
+        report_dir = await asyncio.to_thread(run_step_pbir, output_dir=output_dir, report_name=run.report_name)
         store.update_run(run_id, wizard_step="pbir", output_path=report_dir)
         return {"report_dir": report_dir}
     except Exception as e:
@@ -705,9 +695,7 @@ async def api_step_correct(run_id: str, stage: str, req: StepCorrectRequest):
         import pbi_developer.pipeline.orchestrator as orch
 
         runner = getattr(orch, runner_name)
-        result = await asyncio.to_thread(
-            runner, output_dir=output_dir, corrections=req.corrections
-        )
+        result = await asyncio.to_thread(runner, output_dir=output_dir, corrections=req.corrections)
         return {"result": result}
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)

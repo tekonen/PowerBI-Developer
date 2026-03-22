@@ -15,8 +15,9 @@ def _get_client():
     return TestClient(app)
 
 
-def _create_run_with_artifacts(store, brief=None, wireframe=None, field_mapped=None,
-                                model_metadata=None, dax=None, rls=None):
+def _create_run_with_artifacts(
+    store, brief=None, wireframe=None, field_mapped=None, model_metadata=None, dax=None, rls=None
+):
     """Helper: create a run and populate its artifacts directory."""
     run_id = store.create_run(report_name="Test Wizard")
     output_dir = store.get_output_dir(run_id)
@@ -92,8 +93,18 @@ class TestGeneratePageWizard:
     def test_generate_page_has_all_step_panels(self):
         resp = _get_client().get("/generate")
         text = resp.text
-        for step in ["init", "ingestion", "metadata", "wireframe",
-                      "field_mapping", "dax", "qa", "pbir", "rls", "publish"]:
+        for step in [
+            "init",
+            "ingestion",
+            "metadata",
+            "wireframe",
+            "field_mapping",
+            "dax",
+            "qa",
+            "pbir",
+            "rls",
+            "publish",
+        ]:
             assert f'id="step-{step}"' in text
 
 
@@ -353,9 +364,7 @@ class TestStepData:
         from pbi_developer.web.run_store import RunStore
 
         store = RunStore(base_dir=tmp_path)
-        run_id, _output_dir = _create_run_with_artifacts(
-            store, brief={"report_title": "Test", "pages": []}
-        )
+        run_id, _output_dir = _create_run_with_artifacts(store, brief={"report_title": "Test", "pages": []})
 
         with patch("pbi_developer.web.app.store", store):
             resp = _get_client().get(f"/api/runs/{run_id}/step/ingestion/data")
@@ -368,9 +377,7 @@ class TestStepData:
         from pbi_developer.web.run_store import RunStore
 
         store = RunStore(base_dir=tmp_path)
-        run_id, _output_dir = _create_run_with_artifacts(
-            store, model_metadata="# Semantic Model\nTest data"
-        )
+        run_id, _output_dir = _create_run_with_artifacts(store, model_metadata="# Semantic Model\nTest data")
 
         with patch("pbi_developer.web.app.store", store):
             resp = _get_client().get(f"/api/runs/{run_id}/step/metadata/data")
@@ -448,8 +455,10 @@ class TestSemanticModelMetadataToDict:
             measures=[MeasureInfo(name="Total", table="Sales", expression="SUM(Sales[Revenue])")],
             relationships=[
                 RelationshipInfo(
-                    from_table="Sales", from_column="ProductID",
-                    to_table="Products", to_column="ID",
+                    from_table="Sales",
+                    from_column="ProductID",
+                    to_table="Products",
+                    to_column="ID",
                 )
             ],
         )
