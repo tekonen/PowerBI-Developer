@@ -1,0 +1,15 @@
+<!-- Pipeline stage progress panel -->
+<div id="progress-panel" class="hidden bg-white rounded-lg shadow p-6 mt-6">
+    <h3 class="text-lg font-semibold mb-4">Pipeline Progress</h3>
+    <div class="space-y-3">
+        {% for key, label in stages.items() %}
+        <div id="stage-{{ key }}" class="flex items-center space-x-3 stage-row">
+            <div class="stage-icon w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs" id="icon-{{ key }}">
+                &bull;
+            </div>
+            <span class="text-sm text-gray-600" id="label-{{ key }}">{{ label }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <div id="progress-result" class="hidden mt-4 p-4 rounded-lg"></div>
+</div>

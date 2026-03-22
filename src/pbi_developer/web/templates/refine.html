@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% set active = "refine" %}
+{% block title %}Refine — PBI Developer{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Refine a Pipeline Run</h2>
+
+    <form id="refine-form" class="bg-white rounded-lg shadow p-6 space-y-6">
+        <!-- Run selection -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Select Run</label>
+            <select name="run_id" id="run-select" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                {% for run in runs %}
+                <option value="{{ run.run_id }}" {% if request.query_params.get('run_id') == run.run_id %}selected{% endif %}>
+                    {{ run.run_id }} — {{ run.report_name }} ({{ run.status }})
+                </option>
+                {% endfor %}
+            </select>
+            {% if not runs %}
+            <p class="text-sm text-gray-400 mt-2">No completed runs available. <a href="/generate" class="text-blue-600 hover:underline">Generate a report first.</a></p>
+            {% endif %}
+        </div>
+
+        <!-- Stage selection -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Stage to Refine</label>
+            <div class="flex space-x-4">
+                {% for stage in ["wireframe", "field_mapping", "dax", "rls"] %}
+                <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                    <input type="radio" name="stage" value="{{ stage }}" {% if loop.first %}checked{% endif %} class="text-blue-600">
+                    <span>{{ stage | replace("_", " ") | title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Corrections -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Corrections</label>
+            <textarea name="corrections" rows="4" placeholder="Describe what to change..." class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <!-- Dry run -->
+        <label class="flex items-center space-x-2 text-sm">
+            <input type="checkbox" name="dry_run" checked class="rounded text-blue-600">
+            <span>Dry Run</span>
+        </label>
+
+        <button type="submit" id="refine-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium" {% if not runs %}disabled{% endif %}>
+            Refine
+        </button>
+    </form>
+
+    {% set stages = {"wireframe": "Designing wireframe", "field_mapping": "Mapping fields", "qa": "Validating (QA)", "pbir_generation": "Generating PBIR"} %}
+    {% include "_partials/progress.html" %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('refine-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('refine-btn');
+    btn.disabled = true;
+    btn.textContent = 'Refining...';
+    btn.classList.add('opacity-50');
+
+    const runId = form.querySelector('[name=run_id]').value;
+    const body = {
+        stage: form.querySelector('[name=stage]:checked').value,
+        corrections: form.querySelector('[name=corrections]').value,
+        dry_run: form.querySelector('[name=dry_run]').checked,
+    };
+
+    try {
+        const resp = await fetch(`/api/runs/${runId}/refine`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await resp.json();
+        showProgress();
+        connectSSE(data.run_id);
+    } catch (err) {
+        showResult('error', 'Failed: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Refine';
+        btn.classList.remove('opacity-50');
+    }
+});
+</script>
+{% endblock %}

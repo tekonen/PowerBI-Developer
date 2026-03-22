@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% set active = "generate" %}
+{% block title %}Generate Report — PBI Developer{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Generate Report</h2>
+
+    <form id="generate-form" class="bg-white rounded-lg shadow p-6 space-y-6">
+        <!-- Report name and mode -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Report Name</label>
+                <input type="text" name="report_name" value="Report" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="flex items-end">
+                <label class="flex items-center space-x-2 text-sm">
+                    <input type="checkbox" name="dry_run" checked class="rounded text-blue-600">
+                    <span>Dry Run (no live connections)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- File uploads -->
+        <div class="space-y-4">
+            <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider">Input Files</h3>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="upload-zone">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Requirements Brief</label>
+                    <input type="file" name="brief" accept=".md,.txt" class="file-input">
+                    <p class="text-xs text-gray-400 mt-1">.md or .txt</p>
+                </div>
+                <div class="upload-zone">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Model Metadata</label>
+                    <input type="file" name="model_metadata" accept=".md,.txt" class="file-input">
+                    <p class="text-xs text-gray-400 mt-1">.md or .txt</p>
+                </div>
+                <div class="upload-zone">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">PowerPoint Mockup</label>
+                    <input type="file" name="pptx" accept=".pptx" class="file-input">
+                    <p class="text-xs text-gray-400 mt-1">.pptx (optional)</p>
+                </div>
+                <div class="upload-zone">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Screenshot / Image</label>
+                    <input type="file" name="image" accept="image/*" class="file-input">
+                    <p class="text-xs text-gray-400 mt-1">.png, .jpg (optional)</p>
+                </div>
+                <div class="upload-zone">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Screen Recording</label>
+                    <input type="file" name="video" accept="video/*" class="file-input">
+                    <p class="text-xs text-gray-400 mt-1">.mp4 (optional)</p>
+                </div>
+                <div class="upload-zone">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Style Template</label>
+                    <input type="file" name="style_template" accept=".json" class="file-input">
+                    <p class="text-xs text-gray-400 mt-1">.json (optional)</p>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" id="generate-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium">
+            Generate Report
+        </button>
+    </form>
+
+    {% include "_partials/progress.html" %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('generate-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    btn.textContent = 'Starting...';
+    btn.classList.add('opacity-50');
+
+    const formData = new FormData(form);
+    // Handle checkbox: if checked send true, if unchecked send false
+    if (!form.querySelector('[name=dry_run]').checked) {
+        formData.set('dry_run', 'false');
+    } else {
+        formData.set('dry_run', 'true');
+    }
+
+    try {
+        const resp = await fetch('/api/runs', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.error) {
+            showResult('error', data.error);
+            btn.disabled = false;
+            btn.textContent = 'Generate Report';
+            btn.classList.remove('opacity-50');
+            return;
+        }
+        showProgress();
+        connectSSE(data.run_id);
+    } catch (err) {
+        showResult('error', 'Failed to start pipeline: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Generate Report';
+        btn.classList.remove('opacity-50');
+    }
+});
+</script>
+{% endblock %}

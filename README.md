@@ -2,7 +2,7 @@
 
 An end-to-end AI-powered Power BI report development tool using Claude Sonnet. Automates the full lifecycle from requirements ingestion through wireframing, PBIR report generation, testing, and deployment to Power BI Service.
 
-Built for **People Analytics / HR operational reporting** where the semantic model is stable, user questions are well-defined, and the main cost is manual rebuild effort.
+Built for **operational reporting** where the semantic model is stable, user questions are well-defined, and the main cost is manual rebuild effort.
 
 ## How It Works
 
@@ -85,16 +85,16 @@ pbi-dev generate \
   --brief requirements.md \
   --model-metadata model_metadata.md \
   --output ./output \
-  --name "HR Dashboard" \
+  --name "Sales Dashboard" \
   --dry-run
 ```
 
-This produces a complete PBIR folder structure at `./output/HR Dashboard.Report/` that can be opened in Power BI Desktop.
+This produces a complete PBIR folder structure at `./output/Sales Dashboard.Report/` that can be opened in Power BI Desktop.
 
 ### 4. Validate
 
 ```bash
-pbi-dev validate "./output/HR Dashboard.Report"
+pbi-dev validate "./output/Sales Dashboard.Report"
 ```
 
 ## CLI Commands
@@ -109,6 +109,8 @@ pbi-dev validate "./output/HR Dashboard.Report"
 | `pbi-dev deploy` | Deploy to Power BI Service |
 | `pbi-dev connect` | Test connection to Power BI, Snowflake, or XMLA |
 | `pbi-dev rls` | Generate RLS rules from natural language + verified examples |
+| `pbi-dev refine` | Re-run a pipeline step with corrections and cascade downstream |
+| `pbi-dev serve` | Start the web GUI at http://localhost:8501 |
 
 ## Input Types
 
@@ -119,17 +121,17 @@ The tool accepts multiple input formats. Provide one or more via CLI flags:
 A markdown file describing the dashboard requirements, user questions, and stakeholder needs.
 
 ```markdown
-# HR Dashboard Requirements
+# Sales Dashboard Requirements
 
 ## Key Questions
-- What is our current headcount and how has it trended?
-- What is our monthly attrition rate by department?
-- How many new hires do we have each month?
+- What is our total revenue and how has it trended?
+- What is our conversion rate by region?
+- How many new customers do we acquire each month?
 
 ## Pages Needed
 ### Page 1: Executive Summary
-- KPI cards for: Headcount, Attrition Rate, New Hires, Avg Tenure
-- Headcount trend line chart (12 months)
+- KPI cards for: Revenue, Conversion Rate, New Customers, Avg Order Value
+- Revenue trend line chart (12 months)
 ```
 
 ### PowerPoint Mockup (`--pptx`)
@@ -158,7 +160,7 @@ Generate Row-Level Security rules from natural language and verified examples:
 
 ```bash
 pbi-dev rls \
-  --requirements "Managers should only see data for their department. Executives see all data." \
+  --requirements "Regional managers should only see data for their region. Executives see all data." \
   --examples rls_examples.json \
   --model-metadata model_metadata.md \
   --output rls_config.json
@@ -168,9 +170,9 @@ The examples file lists verified user-to-access mappings:
 
 ```json
 [
-  {"user": "alice@company.com", "expected": "HR department data only"},
-  {"user": "bob@company.com", "expected": "Sales department data only"},
-  {"user": "ceo@company.com", "expected": "All departments"}
+  {"user": "alice@company.com", "expected": "EMEA region data only"},
+  {"user": "bob@company.com", "expected": "North America data only"},
+  {"user": "ceo@company.com", "expected": "All regions"}
 ]
 ```
 
@@ -195,7 +197,7 @@ Extracted style includes: color palette, font families, visual formatting defaul
 The tool generates reports in the [Power BI Enhanced Report Format (PBIR)](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-report), the default format since March 2026. Each visual and page is a separate JSON file:
 
 ```
-HR Dashboard.Report/
+Sales Dashboard.Report/
 ├── definition.pbir          # Format version + semantic model reference
 ├── report.json              # Report-level settings (theme, filter pane)
 └── definition/
@@ -204,9 +206,9 @@ HR Dashboard.Report/
         │   ├── page.json            # Page dimensions, display name
         │   └── visuals/
         │       ├── k1l2m3n4o5p6q7r8s9t0/
-        │       │   └── visual.json  # Card: Total Headcount
+        │       │   └── visual.json  # Card: Total Revenue
         │       └── u1v2w3x4y5z6a7b8c9d0/
-        │           └── visual.json  # Bar chart: Attrition by Dept
+        │           └── visual.json  # Bar chart: Sales by Region
         └── ...
 ```
 
@@ -222,13 +224,13 @@ Generates PBIR files locally. Open the `.pbir` file in Power BI Desktop to previ
 
 ```bash
 # Deploy to dev workspace
-pbi-dev deploy "./output/HR Dashboard.Report" --stage dev
+pbi-dev deploy "./output/Sales Dashboard.Report" --stage dev
 
 # Promote to test
-pbi-dev deploy "./output/HR Dashboard.Report" --stage test
+pbi-dev deploy "./output/Sales Dashboard.Report" --stage test
 
 # Deploy to production (requires human review gate)
-pbi-dev deploy "./output/HR Dashboard.Report" --stage prod
+pbi-dev deploy "./output/Sales Dashboard.Report" --stage prod
 ```
 
 Deployment methods:

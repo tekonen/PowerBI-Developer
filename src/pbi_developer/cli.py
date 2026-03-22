@@ -403,5 +403,23 @@ def refine(
         raise typer.Exit(1)
 
 
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
+    port: int = typer.Option(8501, "--port", help="Port number"),
+    reload: bool = typer.Option(False, "--reload", help="Auto-reload on code changes (dev mode)"),
+) -> None:
+    """Start the web GUI on http://localhost:8501."""
+    import uvicorn
+
+    console.print(f"[bold]Starting web GUI at http://{host}:{port}[/bold]")
+    uvicorn.run(
+        "pbi_developer.web.app:app",
+        host=host,
+        port=port,
+        reload=reload,
+    )
+
+
 if __name__ == "__main__":
     app()

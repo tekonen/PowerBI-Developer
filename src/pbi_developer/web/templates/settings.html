@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% set active = "settings" %}
+{% block title %}Settings — PBI Developer{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Settings</h2>
+
+    <!-- Configuration display -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">Configuration</h3>
+        <p class="text-xs text-gray-400 mb-4">Settings are loaded from environment variables and <code>config/settings.yaml</code>.</p>
+
+        <div class="grid grid-cols-2 gap-4 text-sm">
+            <div class="space-y-3">
+                <div>
+                    <span class="text-gray-500">Claude Model:</span>
+                    <span class="font-mono ml-2">{{ config.claude_model }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">API Key:</span>
+                    <span class="ml-2">{% if config.api_key_set %}<span class="text-green-600">Set</span>{% else %}<span class="text-red-600">Not set</span>{% endif %}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Workspace ID:</span>
+                    <span class="font-mono ml-2">{{ config.workspace_id }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Tenant ID:</span>
+                    <span class="font-mono ml-2">{{ config.tenant_id }}</span>
+                </div>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <span class="text-gray-500">Client ID:</span>
+                    <span class="font-mono ml-2">{{ config.client_id }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Max QA Retries:</span>
+                    <span class="ml-2">{{ config.max_qa_retries }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500">Require Human Review:</span>
+                    <span class="ml-2">{{ config.require_human_review }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection tests -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">Connection Tests</h3>
+        <div class="flex space-x-4">
+            {% for target in ["powerbi", "snowflake", "xmla"] %}
+            <button onclick="testConnection('{{ target }}')" class="conn-btn px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm" id="conn-{{ target }}">
+                Test {{ target | title }}
+            </button>
+            {% endfor %}
+        </div>
+        <div id="conn-result" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function testConnection(target) {
+    const btn = document.getElementById(`conn-${target}`);
+    btn.textContent = 'Testing...';
+    btn.disabled = true;
+    const resultDiv = document.getElementById('conn-result');
+
+    try {
+        const resp = await fetch(`/api/connect/${target}`, { method: 'POST' });
+        const data = await resp.json();
+        resultDiv.classList.remove('hidden');
+        if (data.success) {
+            resultDiv.className = 'mt-4 p-3 rounded-lg text-sm bg-green-50 text-green-700';
+            resultDiv.textContent = data.message;
+        } else {
+            resultDiv.className = 'mt-4 p-3 rounded-lg text-sm bg-red-50 text-red-700';
+            resultDiv.textContent = data.message;
+        }
+    } catch (err) {
+        resultDiv.classList.remove('hidden');
+        resultDiv.className = 'mt-4 p-3 rounded-lg text-sm bg-red-50 text-red-700';
+        resultDiv.textContent = 'Error: ' + err.message;
+    }
+    btn.textContent = `Test ${target.charAt(0).toUpperCase() + target.slice(1)}`;
+    btn.disabled = false;
+}
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@ This file provides context and rules for all AI agents in the pipeline. Each age
 
 ## Project Context
 
-This tool generates Power BI reports for **People Analytics / HR operational reporting**. The semantic model typically contains employee demographics, organizational hierarchy, date dimensions, and HR measures (headcount, attrition, hiring, diversity metrics).
+This tool generates Power BI reports for **operational reporting** across any domain. The semantic model typically contains business entities, dimensional hierarchies, date dimensions, and business measures (KPIs, rates, counts, aggregations).
 
 Reports are generated in **PBIR format** (Power BI Enhanced Report Format) — each visual is an individual `visual.json` file with a published JSON schema from Microsoft.
 
@@ -62,8 +62,8 @@ Use these visual types in order of preference:
 
 ### Naming Conventions
 
-- **Page names**: Descriptive, title case ("Executive Summary", "Attrition Analysis")
-- **Visual titles**: Describe what the visual shows, not how ("Headcount by Department", not "Bar Chart")
+- **Page names**: Descriptive, title case ("Executive Summary", "Regional Analysis")
+- **Visual titles**: Describe what the visual shows, not how ("Revenue by Region", not "Bar Chart")
 - **Measures**: No prefix. Use suffixes for variants: `%` for ratios, `YoY` for year-over-year, `MTD` for month-to-date
 - **Columns**: PascalCase matching the semantic model exactly
 
@@ -104,7 +104,7 @@ Rules:
 - **ONLY use fields that exist in the model metadata.** Never invent field names.
 - Use measures (not raw columns) for value axes and KPI cards
 - Use columns for categories, axes, and slicers
-- Match semantically: "attrition by department" → Y=`[Attrition Rate]`, Category=`Employee[Department]`
+- Match semantically: "revenue by region" → Y=`[Total Revenue]`, Category=`Geography[Region]`
 - Prefer certified measures over ad-hoc calculations
 - If a field cannot be mapped, mark it as `UNMAPPED` with a reason — do not hallucinate a field name
 - Use exact table and field names as they appear in the metadata (case-sensitive)
