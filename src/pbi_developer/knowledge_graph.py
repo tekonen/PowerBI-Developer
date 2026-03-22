@@ -115,8 +115,7 @@ class KnowledgeGraphStore:
                 self.add_relationship(from_e, to_e, **attrs)
 
         logger.info(
-            f"Merged SVG interpretation: {self.graph.number_of_nodes()} nodes, "
-            f"{self.graph.number_of_edges()} edges"
+            f"Merged SVG interpretation: {self.graph.number_of_nodes()} nodes, {self.graph.number_of_edges()} edges"
         )
 
     def merge_from_metadata(self, metadata: Any) -> None:
@@ -153,11 +152,7 @@ class KnowledgeGraphStore:
 
     def get_tables(self) -> list[dict[str, Any]]:
         """Return all table-type entities."""
-        return [
-            {"name": n, **d}
-            for n, d in self.graph.nodes(data=True)
-            if d.get("entity_type") == "table"
-        ]
+        return [{"name": n, **d} for n, d in self.graph.nodes(data=True) if d.get("entity_type") == "table"]
 
     def get_relationships(self) -> list[dict[str, Any]]:
         """Return all relationship edges (excluding has_column/has_measure structural edges)."""

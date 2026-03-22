@@ -126,8 +126,9 @@ class TestParseSvg:
         svg_path = tmp_path / "empty.svg"
         svg_path.write_bytes(EMPTY_SVG)
 
-        with patch("pbi_developer.inputs.svg_parser._rasterize_svg", return_value=b""), pytest.raises(
-            PBIDevError, match="Cannot parse SVG"
+        with (
+            patch("pbi_developer.inputs.svg_parser._rasterize_svg", return_value=b""),
+            pytest.raises(PBIDevError, match="Cannot parse SVG"),
         ):
             parse_svg(svg_path)
 

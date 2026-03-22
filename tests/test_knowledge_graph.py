@@ -25,7 +25,8 @@ class TestKnowledgeGraphStore:
         kg.add_entity("Sales", "table")
         kg.add_entity("Date", "table")
         kg.add_relationship(
-            "Sales", "Date",
+            "Sales",
+            "Date",
             relationship_type="foreign_key",
             from_column="DateKey",
             to_column="DateKey",
@@ -69,18 +70,31 @@ class TestKnowledgeGraphStore:
         interpretation = {
             "diagram_type": "physical_model",
             "entities": [
-                {"name": "Customers", "entity_type": "table", "columns": [
-                    {"name": "CustomerID", "data_type": "INT"},
-                    {"name": "Name", "data_type": "VARCHAR"},
-                ]},
-                {"name": "Orders", "entity_type": "table", "columns": [
-                    {"name": "OrderID", "data_type": "INT"},
-                    {"name": "CustomerID", "data_type": "INT"},
-                ]},
+                {
+                    "name": "Customers",
+                    "entity_type": "table",
+                    "columns": [
+                        {"name": "CustomerID", "data_type": "INT"},
+                        {"name": "Name", "data_type": "VARCHAR"},
+                    ],
+                },
+                {
+                    "name": "Orders",
+                    "entity_type": "table",
+                    "columns": [
+                        {"name": "OrderID", "data_type": "INT"},
+                        {"name": "CustomerID", "data_type": "INT"},
+                    ],
+                },
             ],
             "relationships": [
-                {"from_entity": "Orders", "to_entity": "Customers",
-                 "cardinality": "ManyToOne", "from_column": "CustomerID", "to_column": "CustomerID"},
+                {
+                    "from_entity": "Orders",
+                    "to_entity": "Customers",
+                    "cardinality": "ManyToOne",
+                    "from_column": "CustomerID",
+                    "to_column": "CustomerID",
+                },
             ],
         }
         kg.merge_from_svg_interpretation(interpretation)
@@ -102,19 +116,23 @@ class TestKnowledgeGraphStore:
         kg = self._make_store(tmp_path)
 
         # First merge
-        kg.merge_from_svg_interpretation({
-            "entities": [{"name": "Sales", "entity_type": "table"}],
-            "relationships": [],
-        })
+        kg.merge_from_svg_interpretation(
+            {
+                "entities": [{"name": "Sales", "entity_type": "table"}],
+                "relationships": [],
+            }
+        )
         assert len(kg.get_tables()) == 1
 
         # Second merge adds more
-        kg.merge_from_svg_interpretation({
-            "entities": [{"name": "Products", "entity_type": "table"}],
-            "relationships": [
-                {"from_entity": "Sales", "to_entity": "Products", "cardinality": "ManyToOne"},
-            ],
-        })
+        kg.merge_from_svg_interpretation(
+            {
+                "entities": [{"name": "Products", "entity_type": "table"}],
+                "relationships": [
+                    {"from_entity": "Sales", "to_entity": "Products", "cardinality": "ManyToOne"},
+                ],
+            }
+        )
         assert len(kg.get_tables()) == 2
         assert len(kg.get_relationships()) == 1
 
@@ -153,7 +171,8 @@ class TestKnowledgeGraphStore:
         kg.add_relationship("Sales", "Sales.Revenue", relationship_type="has_column")
         kg.add_entity("Date", "table")
         kg.add_relationship(
-            "Sales", "Date",
+            "Sales",
+            "Date",
             relationship_type="foreign_key",
             from_column="DateKey",
             to_column="DateKey",

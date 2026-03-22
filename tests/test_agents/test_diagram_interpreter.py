@@ -9,18 +9,31 @@ from pbi_developer.agents.diagram_interpreter import DiagramInterpreterAgent
 MOCK_INTERPRETATION = {
     "diagram_type": "physical_model",
     "entities": [
-        {"name": "Customers", "entity_type": "table", "columns": [
-            {"name": "CustomerID", "data_type": "INT", "is_key": True},
-        ]},
-        {"name": "Orders", "entity_type": "table", "columns": [
-            {"name": "OrderID", "data_type": "INT", "is_key": True},
-            {"name": "CustomerID", "data_type": "INT", "is_key": False},
-        ]},
+        {
+            "name": "Customers",
+            "entity_type": "table",
+            "columns": [
+                {"name": "CustomerID", "data_type": "INT", "is_key": True},
+            ],
+        },
+        {
+            "name": "Orders",
+            "entity_type": "table",
+            "columns": [
+                {"name": "OrderID", "data_type": "INT", "is_key": True},
+                {"name": "CustomerID", "data_type": "INT", "is_key": False},
+            ],
+        },
     ],
     "relationships": [
-        {"from_entity": "Orders", "to_entity": "Customers",
-         "relationship_type": "foreign_key", "cardinality": "ManyToOne",
-         "from_column": "CustomerID", "to_column": "CustomerID"},
+        {
+            "from_entity": "Orders",
+            "to_entity": "Customers",
+            "relationship_type": "foreign_key",
+            "cardinality": "ManyToOne",
+            "from_column": "CustomerID",
+            "to_column": "CustomerID",
+        },
     ],
 }
 
