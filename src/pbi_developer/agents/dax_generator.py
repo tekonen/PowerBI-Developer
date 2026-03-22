@@ -76,16 +76,22 @@ class DaxGeneratorAgent(BaseAgent):
         self,
         metric_definitions: list[dict[str, str]],
         model_metadata: str,
+        *,
+        corrections: str | None = None,
+        previous_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Generate DAX measures for the given metric definitions.
 
         Args:
             metric_definitions: List of dicts with "name" and "description" keys.
             model_metadata: Semantic model metadata as markdown.
+            corrections: Natural language corrections to apply to previous output.
+            previous_output: Previous DAX measures output to refine.
 
         Returns:
             Dict with "measures" list and optional "warnings".
         """
+        import json
 
         metrics_text = "\n".join(
             f"- **{m['name']}**: {m.get('description', 'No description')}" for m in metric_definitions
@@ -98,6 +104,14 @@ class DaxGeneratorAgent(BaseAgent):
             "Generate valid DAX that references only tables and columns that exist "
             "in the model. Include format strings and descriptions."
         )
+
+        if corrections and previous_output:
+            prompt += (
+                f"\n\n## Previous Measures\n```json\n{json.dumps(previous_output, indent=2)}\n```\n"
+                f"\n## Corrections Requested\n{corrections}\n\n"
+                "Revise the DAX measures based on the corrections. "
+                "Keep measures not mentioned in the corrections unchanged."
+            )
 
         logger.info(f"Generating {len(metric_definitions)} DAX measure(s)")
         result = self.call_structured(prompt, output_schema=DAX_OUTPUT_SCHEMA)

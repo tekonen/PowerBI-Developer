@@ -127,6 +127,9 @@ class RLSAgent(BaseAgent):
         requirements: str,
         examples: list[dict[str, str]],
         model_metadata: str,
+        *,
+        corrections: str | None = None,
+        previous_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Generate RLS roles from natural language requirements.
 
@@ -144,10 +147,13 @@ class RLSAgent(BaseAgent):
                     {"user": "ceo@co.com", "expected": "All departments"},
                 ]
             model_metadata: Semantic model metadata as markdown.
+            corrections: Natural language corrections to apply to previous output.
+            previous_output: Previous RLS config to refine.
 
         Returns:
             Dict with roles, DAX filters, validation results, and TMDL output.
         """
+        import json
 
         examples_text = "\n".join(
             f"- **{ex['user']}**: should see {ex['expected']}"
@@ -167,6 +173,14 @@ class RLSAgent(BaseAgent):
             "4. List any warnings about edge cases or performance\n"
             "5. Suggest member assignments based on the examples"
         )
+
+        if corrections and previous_output:
+            prompt += (
+                f"\n\n## Previous RLS Config\n```json\n{json.dumps(previous_output, indent=2)}\n```\n"
+                f"\n## Corrections Requested\n{corrections}\n\n"
+                "Revise the RLS configuration based on the corrections. "
+                "Keep rules not mentioned in the corrections unchanged."
+            )
 
         logger.info(f"Generating RLS rules from {len(examples)} verified example(s)")
         result = self.call_structured(prompt, output_schema=RLS_OUTPUT_SCHEMA)

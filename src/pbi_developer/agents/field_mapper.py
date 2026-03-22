@@ -112,12 +112,17 @@ class FieldMapperAgent(BaseAgent):
         self,
         wireframe: dict[str, Any],
         model_metadata: str,
+        *,
+        corrections: str | None = None,
+        previous_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Map semantic model fields to each visual in the wireframe.
 
         Args:
             wireframe: Wireframe spec from WireframeAgent.
             model_metadata: Semantic model metadata as markdown text.
+            corrections: Natural language corrections to apply to previous output.
+            previous_output: Previous field-mapped wireframe to refine.
 
         Returns:
             Field-mapped wireframe matching FIELD_MAPPED_WIREFRAME_SCHEMA.
@@ -133,6 +138,14 @@ class FieldMapperAgent(BaseAgent):
             "If you cannot find an appropriate field, set field_type to 'column' "
             "and add an unmapped_reason."
         )
+
+        if corrections and previous_output:
+            prompt += (
+                f"\n\n## Previous Field Mappings\n```json\n{json.dumps(previous_output, indent=2)}\n```\n"
+                f"\n## Corrections Requested\n{corrections}\n\n"
+                "Revise the field mappings based on the corrections. "
+                "Keep mappings not mentioned in the corrections unchanged."
+            )
 
         logger.info("Mapping fields to wireframe visuals...")
         result = self.call_structured(prompt, output_schema=FIELD_MAPPED_WIREFRAME_SCHEMA)

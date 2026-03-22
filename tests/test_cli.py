@@ -75,3 +75,25 @@ class TestCLIBasics:
         result = runner.invoke(app, ["rls", "--help"])
         assert result.exit_code == 0
         assert "--requirements" in result.stdout
+
+    def test_refine_command_exists(self):
+        result = runner.invoke(app, ["refine", "--help"])
+        assert result.exit_code == 0
+        assert "--step" in result.stdout
+        assert "--corrections" in result.stdout
+
+    def test_refine_invalid_step(self, tmp_path):
+        # Create artifacts dir so it passes the existence check
+        (tmp_path / "artifacts").mkdir()
+        result = runner.invoke(
+            app, ["refine", "--step", "ingestion", "--corrections", "fix", "--output-dir", str(tmp_path)]
+        )
+        assert result.exit_code == 1
+        assert "Invalid step" in result.stdout
+
+    def test_refine_no_artifacts(self, tmp_path):
+        result = runner.invoke(
+            app, ["refine", "--step", "wireframe", "--corrections", "fix", "--output-dir", str(tmp_path)]
+        )
+        assert result.exit_code == 1
+        assert "No artifacts found" in result.stdout

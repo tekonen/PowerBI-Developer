@@ -25,6 +25,7 @@ STAGE_LABELS: dict[str, str] = {
     "pbir_generation": "Generating PBIR",
     "publishing": "Publishing",
     "rls": "RLS configuration",
+    "dax": "Generating DAX measures",
 }
 
 
@@ -328,6 +329,78 @@ def rls(
         for a in apply_result.get("assignments", []):
             status = "[green]OK[/green]" if a.get("status") == "assigned" else f"[red]{a.get('error', 'failed')}[/red]"
             console.print(f"  {status} {a.get('member', '')} -> {a.get('role', '')}")
+
+
+@app.command()
+def refine(
+    step: str = typer.Option(..., "--step", "-s", help="Stage to refine: wireframe, field_mapping, dax, rls"),
+    corrections: str = typer.Option(..., "--corrections", "-c", help="Natural language description of what to change"),
+    output_dir: Path = typer.Option(
+        "./output", "--output-dir", "-o", help="Output directory from previous pipeline run"
+    ),
+    report_name: str = typer.Option("Report", "--name", "-n", help="Report name"),
+    dry_run: bool = typer.Option(True, "--dry-run/--live", help="Dry run (no live connections)"),
+    verbose: bool = typer.Option(False, "--verbose", help="Show token usage per stage"),
+) -> None:
+    """Refine a previous pipeline output by re-running a step with corrections.
+
+    Re-runs the specified stage with your corrective instructions, then cascades
+    downstream stages to keep everything consistent. Requires a previous
+    'generate' run (artifacts must exist in the output directory).
+
+    Examples:
+
+        pbi-dev refine --step wireframe -c "Move the headcount card to the top-right"
+
+        pbi-dev refine --step field_mapping -c "Use Avg Tenure (Years) instead of Avg Tenure"
+
+        pbi-dev refine --step dax -c "Use a 12-month rolling window for attrition rate"
+    """
+    from pbi_developer.pipeline.orchestrator import REFINABLE_STAGES, run_from_stage
+
+    if step not in REFINABLE_STAGES:
+        console.print(f"[red]Invalid step: {step}. Must be one of: {', '.join(sorted(REFINABLE_STAGES))}[/red]")
+        raise typer.Exit(1)
+
+    artifacts_dir = output_dir / "artifacts"
+    if not artifacts_dir.exists():
+        console.print(f"[red]No artifacts found in {output_dir}. Run 'generate' first.[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Refining {step}...[/bold]")
+    console.print(f"[dim]Corrections: {corrections}[/dim]\n")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task(f"Refining {step}...", total=None)
+
+        def on_progress(stage: str, status: str) -> None:
+            label = STAGE_LABELS.get(stage, stage)
+            if status == "running":
+                progress.update(task, description=f"[cyan]{label}...[/cyan]")
+            elif status == "completed":
+                progress.update(task, description=f"[green]{label} done[/green]")
+
+        result = run_from_stage(
+            stage=step,
+            output_dir=output_dir,
+            corrections=corrections,
+            report_name=report_name,
+            dry_run=dry_run,
+            progress_callback=on_progress,
+        )
+
+    if result.success:
+        console.print(f"\n[green]Refinement complete. Output at: {result.output_path}[/green]")
+        if verbose and result.state:
+            total = result.state.total_tokens
+            console.print(f"[dim]Tokens: in={total['input_tokens']} out={total['output_tokens']}[/dim]")
+    else:
+        console.print(f"\n[red]Refinement failed: {result.error}[/red]")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

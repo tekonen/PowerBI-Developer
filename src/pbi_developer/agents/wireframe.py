@@ -106,6 +106,8 @@ class WireframeAgent(BaseAgent):
         *,
         model_metadata: str | None = None,
         style: dict[str, Any] | None = None,
+        corrections: str | None = None,
+        previous_output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Design a wireframe from a structured brief.
 
@@ -113,6 +115,8 @@ class WireframeAgent(BaseAgent):
             brief: Structured brief from PlannerAgent.
             model_metadata: Semantic model metadata as text.
             style: Optional extracted style specification.
+            corrections: Natural language corrections to apply to previous output.
+            previous_output: Previous wireframe output to refine.
 
         Returns:
             Wireframe spec matching WIREFRAME_SCHEMA.
@@ -130,6 +134,14 @@ class WireframeAgent(BaseAgent):
                 f"\n## Style Guide\nPreferred visuals: {style.get('preferred_visuals', [])}\n"
                 f"Color palette: {style.get('color_palette', [])}\n"
                 f"Page layout: {style.get('page_layout', {})}\n"
+            )
+
+        if corrections and previous_output:
+            prompt_parts.append(
+                f"\n## Previous Wireframe\n```json\n{_compact_json(previous_output)}\n```\n"
+                f"\n## Corrections Requested\n{corrections}\n\n"
+                "Revise the wireframe based on the corrections. "
+                "Keep everything not mentioned in the corrections unchanged."
             )
 
         prompt = "".join(prompt_parts)

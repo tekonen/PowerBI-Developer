@@ -26,6 +26,8 @@ from pbi_developer.utils.logging import get_logger
 
 ProgressCallback = Callable[[str, str], None] | None
 
+REFINABLE_STAGES = {"wireframe", "field_mapping", "dax", "rls"}
+
 logger = get_logger(__name__)
 
 
@@ -72,6 +74,7 @@ def run_pipeline(
         _notify("ingestion", "running")
         brief_data = _step_1_ingest(inputs)
         state.set_completed("ingestion", {"brief": brief_data})
+        _save_artifact(output_dir, "brief", brief_data)
         _notify("ingestion", "completed")
         logger.info("Step 1 complete: Requirements ingested")
 
@@ -80,6 +83,7 @@ def run_pipeline(
         _notify("model_connection", "running")
         model_metadata = _step_2_connect_model(inputs, dry_run)
         state.set_completed("model_connection")
+        _save_text_artifact(output_dir, "model_metadata", model_metadata)
         _notify("model_connection", "completed")
         logger.info("Step 2 complete: Model metadata loaded")
 
@@ -96,6 +100,9 @@ def run_pipeline(
             style=style,
         )
         state.set_completed("wireframe", {"wireframe": wireframe}, wireframe_agent.token_usage)
+        _save_artifact(output_dir, "wireframe", wireframe)
+        if style is not None:
+            _save_artifact(output_dir, "style", style)
         _notify("wireframe", "completed")
         logger.info("Step 3 complete: Wireframe designed")
 
@@ -107,6 +114,7 @@ def run_pipeline(
         mapper = FieldMapperAgent()
         field_mapped = mapper.map_fields(wireframe, model_metadata)
         state.set_completed("field_mapping", {"field_mapped": field_mapped}, mapper.token_usage)
+        _save_artifact(output_dir, "field_mapped", field_mapped)
         _notify("field_mapping", "completed")
         logger.info("Step 4 complete: Fields mapped")
 
@@ -144,6 +152,7 @@ def run_pipeline(
             },
             qa_agent.token_usage,
         )
+        _save_artifact(output_dir, "field_mapped", field_mapped)
         _notify("qa", "completed")
         logger.info("Step 5 complete: QA passed")
 
@@ -228,6 +237,276 @@ def run_wireframe_only(
     return True
 
 
+def run_from_stage(
+    *,
+    stage: str,
+    output_dir: Path,
+    corrections: str,
+    report_name: str = "Report",
+    dry_run: bool = True,
+    progress_callback: ProgressCallback = None,
+) -> PipelineResult:
+    """Re-run a pipeline stage with corrections, then cascade downstream.
+
+    Loads previously saved artifacts from output_dir/artifacts/, re-runs the
+    specified stage with the user's corrective instructions, and re-runs all
+    downstream stages to maintain consistency.
+
+    Args:
+        stage: Which stage to refine (wireframe, field_mapping, dax, rls).
+        output_dir: Output directory from a previous pipeline run.
+        corrections: Natural language description of what to change.
+        report_name: Name for the generated report.
+        dry_run: If True, skip live connections and deployment.
+        progress_callback: Optional callback for progress updates.
+
+    Returns:
+        PipelineResult with success status and output path.
+    """
+    from pbi_developer.utils.files import read_json
+
+    if stage not in REFINABLE_STAGES:
+        return PipelineResult(
+            success=False,
+            error=f"Invalid stage '{stage}'. Must be one of: {', '.join(sorted(REFINABLE_STAGES))}",
+        )
+
+    artifacts_dir = Path(output_dir) / "artifacts"
+    if not artifacts_dir.exists():
+        return PipelineResult(
+            success=False,
+            error=f"No artifacts found in {output_dir}. Run 'generate' first.",
+        )
+
+    state = PipelineState()
+
+    def _notify(stage_name: str, status: str) -> None:
+        if progress_callback:
+            progress_callback(stage_name, status)
+
+    try:
+        # Load common artifacts
+        model_metadata_path = artifacts_dir / "model_metadata.md"
+        model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
+
+        style_path = artifacts_dir / "style.json"
+        style = read_json(style_path) if style_path.exists() else None
+
+        if stage == "wireframe":
+            brief = read_json(artifacts_dir / "brief.json")
+            previous = (
+                read_json(artifacts_dir / "wireframe.json") if (artifacts_dir / "wireframe.json").exists() else None
+            )
+
+            state.set_running("wireframe")
+            _notify("wireframe", "running")
+            from pbi_developer.agents.wireframe import WireframeAgent
+
+            wireframe_agent = WireframeAgent()
+            wireframe = wireframe_agent.design(
+                brief,
+                model_metadata=model_metadata,
+                style=style,
+                corrections=corrections,
+                previous_output=previous,
+            )
+            _save_artifact(output_dir, "wireframe", wireframe)
+            state.set_completed("wireframe", {"wireframe": wireframe}, wireframe_agent.token_usage)
+            _notify("wireframe", "completed")
+
+            # Cascade: field_mapping -> qa -> pbir_generation
+            field_mapped = _run_field_mapping(wireframe, model_metadata, output_dir, state, _notify)
+            field_mapped = _run_qa(field_mapped, model_metadata, wireframe, output_dir, state, _notify)
+            report_dir = _run_pbir_generation(field_mapped, report_name, style, output_dir, state, _notify)
+
+        elif stage == "field_mapping":
+            wireframe = read_json(artifacts_dir / "wireframe.json")
+            previous = (
+                read_json(artifacts_dir / "field_mapped.json")
+                if (artifacts_dir / "field_mapped.json").exists()
+                else None
+            )
+
+            field_mapped = _run_field_mapping(
+                wireframe,
+                model_metadata,
+                output_dir,
+                state,
+                _notify,
+                corrections=corrections,
+                previous_output=previous,
+            )
+            field_mapped = _run_qa(field_mapped, model_metadata, wireframe, output_dir, state, _notify)
+            report_dir = _run_pbir_generation(field_mapped, report_name, style, output_dir, state, _notify)
+
+        elif stage == "dax":
+            brief = read_json(artifacts_dir / "brief.json")
+            previous = (
+                read_json(artifacts_dir / "dax_measures.json")
+                if (artifacts_dir / "dax_measures.json").exists()
+                else None
+            )
+
+            state.set_running("dax")
+            _notify("dax", "running")
+            from pbi_developer.agents.dax_generator import DaxGeneratorAgent
+
+            dax_agent = DaxGeneratorAgent()
+            metric_definitions = brief.get("kpis", [])
+            dax_result = dax_agent.generate_measures(
+                metric_definitions,
+                model_metadata,
+                corrections=corrections,
+                previous_output=previous,
+            )
+            _save_artifact(output_dir, "dax_measures", dax_result)
+            state.set_completed("dax", {"measures": dax_result}, dax_agent.token_usage)
+            _notify("dax", "completed")
+            report_dir = output_dir
+
+        elif stage == "rls":
+            brief = read_json(artifacts_dir / "brief.json")
+            previous = (
+                read_json(artifacts_dir / "rls_config.json") if (artifacts_dir / "rls_config.json").exists() else None
+            )
+
+            state.set_running("rls")
+            _notify("rls", "running")
+            from pbi_developer.agents.rls import RLSAgent
+
+            rls_agent = RLSAgent()
+            rls_requirements = brief.get("rls_requirements", "")
+            rls_examples = brief.get("rls_examples", [])
+            rls_result = rls_agent.generate_rls(
+                rls_requirements,
+                rls_examples,
+                model_metadata,
+                corrections=corrections,
+                previous_output=previous,
+            )
+            _save_artifact(output_dir, "rls_config", rls_result)
+            state.set_completed("rls", {"rls": rls_result}, rls_agent.token_usage)
+            _notify("rls", "completed")
+            report_dir = output_dir
+
+        _save_state(state, output_dir)
+
+        total = state.total_tokens
+        logger.info(f"Refinement tokens: in={total['input_tokens']}, out={total['output_tokens']}")
+
+        return PipelineResult(
+            success=True,
+            output_path=Path(report_dir),
+            state=state,
+        )
+
+    except Exception as e:
+        logger.error(f"Refinement failed: {e}")
+        state.set_failed(state.current_stage, str(e))
+        return PipelineResult(success=False, error=str(e), state=state)
+
+
+def _run_field_mapping(
+    wireframe: dict[str, Any],
+    model_metadata: str,
+    output_dir: Path,
+    state: PipelineState,
+    _notify: Callable[[str, str], None],
+    *,
+    corrections: str | None = None,
+    previous_output: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Run the field mapping stage."""
+    state.set_running("field_mapping")
+    _notify("field_mapping", "running")
+    from pbi_developer.agents.field_mapper import FieldMapperAgent
+
+    mapper = FieldMapperAgent()
+    field_mapped = mapper.map_fields(
+        wireframe,
+        model_metadata,
+        corrections=corrections,
+        previous_output=previous_output,
+    )
+    _save_artifact(output_dir, "field_mapped", field_mapped)
+    state.set_completed("field_mapping", {"field_mapped": field_mapped}, mapper.token_usage)
+    _notify("field_mapping", "completed")
+    return field_mapped
+
+
+def _run_qa(
+    field_mapped: dict[str, Any],
+    model_metadata: str,
+    wireframe: dict[str, Any],
+    output_dir: Path,
+    state: PipelineState,
+    _notify: Callable[[str, str], None],
+) -> dict[str, Any]:
+    """Run QA validation with retry loop."""
+    state.set_running("qa")
+    _notify("qa", "running")
+    from pbi_developer.agents.field_mapper import FieldMapperAgent
+    from pbi_developer.agents.qa import QAAgent
+
+    qa_agent = QAAgent()
+    max_retries = settings.pipeline.max_qa_retries
+
+    for attempt in range(max_retries + 1):
+        qa_result = qa_agent.validate(field_mapped, model_metadata)
+        if qa_result.passed:
+            break
+        if attempt < max_retries:
+            logger.warning(f"QA failed (attempt {attempt + 1}/{max_retries + 1}), retrying field mapping...")
+            mapper = FieldMapperAgent()
+            field_mapped = mapper.map_fields(wireframe, model_metadata)
+        else:
+            logger.error("QA failed after max retries")
+            state.set_failed("qa", qa_result.summary)
+            raise RuntimeError(f"QA validation failed: {qa_result.summary}")
+
+    _save_artifact(output_dir, "field_mapped", field_mapped)
+    state.set_completed(
+        "qa",
+        {
+            "qa_issues": [
+                {"severity": i.severity, "visual_id": i.visual_id, "description": i.description}
+                for i in qa_result.issues
+            ]
+        },
+        qa_agent.token_usage,
+    )
+    _notify("qa", "completed")
+    return field_mapped
+
+
+def _run_pbir_generation(
+    field_mapped: dict[str, Any],
+    report_name: str,
+    style: dict[str, Any] | None,
+    output_dir: Path,
+    state: PipelineState,
+    _notify: Callable[[str, str], None],
+) -> Path:
+    """Run PBIR conversion stage."""
+    state.set_running("pbir_generation")
+    _notify("pbir_generation", "running")
+    from pbi_developer.agents.pbir_generator import generate_pbir_report
+    from pbi_developer.pbir.builder import build_pbir_folder
+
+    report = generate_pbir_report(field_mapped, report_name=report_name, style=style)
+    report_dir = build_pbir_folder(report, Path(output_dir))
+    state.set_completed("pbir_generation", {"report_dir": str(report_dir)})
+    _notify("pbir_generation", "completed")
+
+    from pbi_developer.pbir.validator import validate_pbir_folder
+
+    validation = validate_pbir_folder(report_dir)
+    if not validation.valid:
+        logger.warning(f"PBIR validation issues: {validation.errors}")
+
+    return report_dir
+
+
 def _step_1_ingest(inputs: dict[str, Path]) -> dict[str, Any]:
     """Step 1: Ingest and parse all input sources into a structured brief."""
     from pbi_developer.agents.planner import PlannerAgent
@@ -301,6 +580,20 @@ def _load_style(style_path: Path | None) -> dict[str, Any] | None:
 
         return extract_style_from_json(style_path).model_dump()
     return None
+
+
+def _save_artifact(output_dir: Path, name: str, data: Any) -> None:
+    """Save an intermediate pipeline artifact as JSON."""
+    from pbi_developer.utils.files import write_json
+
+    write_json(output_dir / "artifacts" / f"{name}.json", data)
+
+
+def _save_text_artifact(output_dir: Path, name: str, text: str) -> None:
+    """Save an intermediate pipeline artifact as text."""
+    path = output_dir / "artifacts" / f"{name}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
 
 
 def _save_state(state: PipelineState, output_dir: Path) -> None:
