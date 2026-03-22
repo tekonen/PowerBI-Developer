@@ -6,7 +6,6 @@ detection, then sends frames to Claude vision for dashboard layout interpretatio
 
 from __future__ import annotations
 
-import io
 from pathlib import Path
 
 from pbi_developer.utils.logging import get_logger
@@ -34,7 +33,6 @@ def extract_key_frames(
         List of frame images as PNG bytes.
     """
     import cv2
-    import numpy as np
 
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
@@ -91,6 +89,7 @@ def extract_key_frames(
 def _frame_to_png(frame) -> bytes:
     """Convert an OpenCV frame to PNG bytes."""
     import cv2
+
     success, buf = cv2.imencode(".png", frame)
     if not success:
         raise RuntimeError("Failed to encode frame as PNG")

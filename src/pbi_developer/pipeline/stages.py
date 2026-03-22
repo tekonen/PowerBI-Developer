@@ -14,11 +14,11 @@ Each stage represents a step in the 8-step pipeline:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class StageStatus(str, Enum):
+class StageStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -29,6 +29,7 @@ class StageStatus(str, Enum):
 @dataclass
 class StageResult:
     """Result of a pipeline stage execution."""
+
     stage_name: str
     status: StageStatus = StageStatus.PENDING
     data: dict[str, Any] = field(default_factory=dict)
@@ -43,6 +44,7 @@ class StageResult:
 @dataclass
 class PipelineState:
     """Tracks the state of the entire pipeline."""
+
     stages: dict[str, StageResult] = field(default_factory=dict)
     current_stage: str = ""
 
@@ -50,7 +52,9 @@ class PipelineState:
         self.current_stage = stage
         self.stages[stage] = StageResult(stage_name=stage, status=StageStatus.RUNNING)
 
-    def set_completed(self, stage: str, data: dict[str, Any] | None = None, tokens: dict[str, int] | None = None) -> None:
+    def set_completed(
+        self, stage: str, data: dict[str, Any] | None = None, tokens: dict[str, int] | None = None
+    ) -> None:
         if stage in self.stages:
             self.stages[stage].status = StageStatus.COMPLETED
             if data:
@@ -68,10 +72,7 @@ class PipelineState:
 
     @property
     def all_completed(self) -> bool:
-        return all(
-            s.status in (StageStatus.COMPLETED, StageStatus.SKIPPED)
-            for s in self.stages.values()
-        )
+        return all(s.status in (StageStatus.COMPLETED, StageStatus.SKIPPED) for s in self.stages.values())
 
     @property
     def total_tokens(self) -> dict[str, int]:

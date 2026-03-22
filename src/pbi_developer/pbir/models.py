@@ -32,8 +32,10 @@ def _generate_id() -> str:
 
 # --- Visual Models ---
 
+
 class VisualPosition(BaseModel):
     """Position and size of a visual on the canvas."""
+
     x: int = 0
     y: int = 0
     width: int = 300
@@ -44,6 +46,7 @@ class VisualPosition(BaseModel):
 
 class DataFieldBinding(BaseModel):
     """Binding a data field to a visual role (e.g., Category, Values)."""
+
     table: str
     column: str | None = None
     measure: str | None = None
@@ -67,12 +70,14 @@ class DataFieldBinding(BaseModel):
 
 class VisualDataRole(BaseModel):
     """A visual data role with its field bindings."""
+
     role: str  # e.g., "Category", "Values", "Series"
     bindings: list[DataFieldBinding] = Field(default_factory=list)
 
 
 class VisualFilter(BaseModel):
     """A filter applied to a visual."""
+
     table: str
     column: str
     filter_type: str = "basic"  # basic, advanced, relative_date, top_n
@@ -83,6 +88,7 @@ class VisualFilter(BaseModel):
 
 class VisualFormatting(BaseModel):
     """Visual formatting properties."""
+
     title: str | None = None
     show_title: bool = True
     background_color: str | None = None
@@ -98,6 +104,7 @@ class PBIRVisual(BaseModel):
 
     Each visual becomes a visual.json file in the PBIR folder structure.
     """
+
     id: str = Field(default_factory=_generate_id)
     visual_type: str  # e.g., "card", "clusteredBarChart", "lineChart", "tableEx", "slicer"
     position: VisualPosition = Field(default_factory=VisualPosition)
@@ -146,17 +153,23 @@ class PBIRVisual(BaseModel):
         objects: dict[str, Any] = {}
         fmt = self.formatting
         if fmt.title is not None or not fmt.show_title:
-            objects["title"] = [{"properties": {
-                "show": {"expr": {"Literal": {"Value": str(fmt.show_title).lower()}}},
-            }}]
-            if fmt.title:
-                objects["title"][0]["properties"]["text"] = {
-                    "expr": {"Literal": {"Value": f"'{fmt.title}'"}}
+            objects["title"] = [
+                {
+                    "properties": {
+                        "show": {"expr": {"Literal": {"Value": str(fmt.show_title).lower()}}},
+                    }
                 }
+            ]
+            if fmt.title:
+                objects["title"][0]["properties"]["text"] = {"expr": {"Literal": {"Value": f"'{fmt.title}'"}}}
         if fmt.background_color:
-            objects["background"] = [{"properties": {
-                "color": {"solid": {"color": fmt.background_color}},
-            }}]
+            objects["background"] = [
+                {
+                    "properties": {
+                        "color": {"solid": {"color": fmt.background_color}},
+                    }
+                }
+            ]
         objects.update(fmt.custom_properties)
         return objects
 
@@ -176,8 +189,10 @@ class PBIRVisual(BaseModel):
 
 # --- Page Models ---
 
+
 class PageBackground(BaseModel):
     """Page background settings."""
+
     color: str | None = None
     transparency: int = 0
 
@@ -187,6 +202,7 @@ class PBIRPage(BaseModel):
 
     Each page becomes a folder with page.json + visuals/ subfolder.
     """
+
     id: str = Field(default_factory=_generate_id)
     display_name: str = "Page 1"
     width: int = 1280
@@ -214,8 +230,10 @@ class PBIRPage(BaseModel):
 
 # --- Report Models ---
 
+
 class SemanticModelReference(BaseModel):
     """Reference to the semantic model used by the report."""
+
     by_connection: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -226,6 +244,7 @@ class SemanticModelReference(BaseModel):
 
 class PBIRDefinition(BaseModel):
     """The definition.pbir file linking the report to a semantic model."""
+
     version: str = "1.0"
     dataset_reference: SemanticModelReference = Field(default_factory=SemanticModelReference)
 
@@ -242,6 +261,7 @@ class PBIRDefinition(BaseModel):
 
 class ReportSettings(BaseModel):
     """Report-level settings stored in report.json."""
+
     theme_name: str = "default"
     filter_pane_visible: bool = True
     custom_settings: dict[str, Any] = Field(default_factory=dict)
@@ -269,6 +289,7 @@ class PBIRReport(BaseModel):
 
     Composes all pages, visuals, settings, and semantic model reference.
     """
+
     name: str = "Report"
     definition: PBIRDefinition = Field(default_factory=PBIRDefinition)
     settings: ReportSettings = Field(default_factory=ReportSettings)

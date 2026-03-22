@@ -7,7 +7,6 @@ Parses into a structured brief that downstream agents consume.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 
 def load_brief(path: Path) -> str:

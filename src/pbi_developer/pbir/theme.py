@@ -23,6 +23,7 @@ logger = get_logger(__name__)
 
 class ExtractedStyle(BaseModel):
     """Extracted visual style specification."""
+
     color_palette: list[str] = Field(default_factory=list)
     font_family: str = "Segoe UI"
     font_size: int = 10
@@ -137,9 +138,13 @@ def apply_style_to_visual(visual_data: dict[str, Any], style: ExtractedStyle) ->
 
     # Apply background
     if style.background_color:
-        objects["background"] = [{"properties": {
-            "color": {"solid": {"color": style.background_color}},
-        }}]
+        objects["background"] = [
+            {
+                "properties": {
+                    "color": {"solid": {"color": style.background_color}},
+                }
+            }
+        ]
 
     if "visual" in visual_data:
         visual_data["visual"]["objects"] = objects

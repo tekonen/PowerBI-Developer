@@ -183,24 +183,30 @@ def _test_bpa_rules(report_dir: Path) -> list[TestResult]:
                 if not title_obj:
                     visuals_without_title += 1
 
-    results.append(TestResult(
-        "Page Count",
-        page_count > 0,
-        f"{page_count} page(s) found",
-    ))
+    results.append(
+        TestResult(
+            "Page Count",
+            page_count > 0,
+            f"{page_count} page(s) found",
+        )
+    )
 
-    results.append(TestResult(
-        "Visual Count",
-        visual_count > 0,
-        f"{visual_count} visual(s) across {page_count} page(s)",
-    ))
+    results.append(
+        TestResult(
+            "Visual Count",
+            visual_count > 0,
+            f"{visual_count} visual(s) across {page_count} page(s)",
+        )
+    )
 
     if visuals_without_title > 0:
-        results.append(TestResult(
-            "Visual Titles",
-            True,  # Warning, not failure
-            f"{visuals_without_title} visual(s) without titles (optional)",
-        ))
+        results.append(
+            TestResult(
+                "Visual Titles",
+                True,  # Warning, not failure
+                f"{visuals_without_title} visual(s) without titles (optional)",
+            )
+        )
 
     return results
 
@@ -210,11 +216,12 @@ def _test_dax_queries(report_dir: Path, dataset_id: str) -> list[TestResult]:
     results: list[TestResult] = []
     try:
         from pbi_developer.connectors.powerbi_rest import PowerBIClient
+
         client = PowerBIClient()
 
         # Test with a simple EVALUATE query
         try:
-            result = client.execute_dax_query(dataset_id, "EVALUATE ROW(\"test\", 1)")
+            client.execute_dax_query(dataset_id, 'EVALUATE ROW("test", 1)')
             results.append(TestResult("DAX Connectivity", True, "DAX query execution working"))
         except Exception as e:
             results.append(TestResult("DAX Connectivity", False, f"DAX query failed: {e}"))
@@ -229,7 +236,7 @@ def _extract_field_refs(visual_data: dict[str, Any]) -> list[str]:
     """Extract table.field references from a visual.json."""
     refs: list[str] = []
     query_state = visual_data.get("visual", {}).get("query", {}).get("queryState", {})
-    for role, config in query_state.items():
+    for _role, config in query_state.items():
         for proj in config.get("projections", []):
             qr = proj.get("queryRef", "")
             if "." in qr:

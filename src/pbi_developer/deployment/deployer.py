@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from pbi_developer.config import settings
 from pbi_developer.utils.logging import get_logger

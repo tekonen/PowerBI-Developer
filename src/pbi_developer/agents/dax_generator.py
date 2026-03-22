@@ -86,11 +86,9 @@ class DaxGeneratorAgent(BaseAgent):
         Returns:
             Dict with "measures" list and optional "warnings".
         """
-        import json
 
         metrics_text = "\n".join(
-            f"- **{m['name']}**: {m.get('description', 'No description')}"
-            for m in metric_definitions
+            f"- **{m['name']}**: {m.get('description', 'No description')}" for m in metric_definitions
         )
 
         prompt = (

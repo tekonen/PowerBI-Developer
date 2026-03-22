@@ -66,10 +66,12 @@ def clustered_bar_chart(
         ),
     ]
     if legend_table and legend_column:
-        roles.append(VisualDataRole(
-            role="Series",
-            bindings=[DataFieldBinding(table=legend_table, column=legend_column)],
-        ))
+        roles.append(
+            VisualDataRole(
+                role="Series",
+                bindings=[DataFieldBinding(table=legend_table, column=legend_column)],
+            )
+        )
     return PBIRVisual(
         visual_type="clusteredBarChart",
         position=VisualPosition(x=x, y=y, width=width, height=height),
@@ -104,10 +106,12 @@ def line_chart(
         ),
     ]
     if legend_table and legend_column:
-        roles.append(VisualDataRole(
-            role="Series",
-            bindings=[DataFieldBinding(table=legend_table, column=legend_column)],
-        ))
+        roles.append(
+            VisualDataRole(
+                role="Series",
+                bindings=[DataFieldBinding(table=legend_table, column=legend_column)],
+            )
+        )
     return PBIRVisual(
         visual_type="lineChart",
         position=VisualPosition(x=x, y=y, width=width, height=height),
@@ -167,10 +171,12 @@ def matrix_visual(
         ),
     ]
     if column_table and column_column:
-        roles.append(VisualDataRole(
-            role="Columns",
-            bindings=[DataFieldBinding(table=column_table, column=column_column)],
-        ))
+        roles.append(
+            VisualDataRole(
+                role="Columns",
+                bindings=[DataFieldBinding(table=column_table, column=column_column)],
+            )
+        )
     return PBIRVisual(
         visual_type="pivotTable",
         position=VisualPosition(x=x, y=y, width=width, height=height),

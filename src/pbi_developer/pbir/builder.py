@@ -65,17 +65,19 @@ def build_pbir_folder(report: PBIRReport, output_dir: Path) -> Path:
 
     # Create .pbip marker file alongside the .Report folder
     pbip_path = output_dir / f"{report.name}.pbip"
-    write_json(pbip_path, {
-        "version": "1.0",
-        "artifacts": [
-            {
-                "report": {
-                    "path": f"{report.name}.Report",
+    write_json(
+        pbip_path,
+        {
+            "version": "1.0",
+            "artifacts": [
+                {
+                    "report": {
+                        "path": f"{report.name}.Report",
+                    }
                 }
-            }
-        ],
-    })
+            ],
+        },
+    )
 
-    logger.info(f"PBIR build complete: {len(report.pages)} pages, "
-                f"{sum(len(p.visuals) for p in report.pages)} visuals")
+    logger.info(f"PBIR build complete: {len(report.pages)} pages, {sum(len(p.visuals) for p in report.pages)} visuals")
     return report_dir

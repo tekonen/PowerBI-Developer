@@ -116,9 +116,6 @@ class StyleExtractorAgent(BaseAgent):
         Returns:
             Style specification matching STYLE_SCHEMA.
         """
-        prompt = (
-            "Based on this dashboard description, extract a complete visual style specification:\n\n"
-            f"{description}"
-        )
+        prompt = f"Based on this dashboard description, extract a complete visual style specification:\n\n{description}"
         logger.info("Extracting style from description")
         return self.call_structured(prompt, output_schema=STYLE_SCHEMA)

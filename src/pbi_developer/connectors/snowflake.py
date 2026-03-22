@@ -7,7 +7,6 @@ data types, and row counts. Outputs a semantic layer map for downstream agents.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from pbi_developer.connectors.auth import get_snowflake_connection
 from pbi_developer.utils.logging import get_logger
@@ -49,9 +48,7 @@ class SnowflakeSchema:
             lines.append("\n| Column | Type | Nullable | Description |")
             lines.append("|--------|------|----------|-------------|")
             for col in tbl.columns:
-                lines.append(
-                    f"| {col.name} | {col.data_type} | {col.nullable} | {col.comment} |"
-                )
+                lines.append(f"| {col.name} | {col.data_type} | {col.nullable} | {col.comment} |")
         return "\n".join(lines)
 
 
@@ -108,12 +105,14 @@ def discover_schema(
         """)
 
         for col_name, data_type, nullable, col_comment in cursor.fetchall():
-            table_info.columns.append(ColumnInfo(
-                name=col_name,
-                data_type=data_type,
-                nullable=(nullable == "YES"),
-                comment=col_comment or "",
-            ))
+            table_info.columns.append(
+                ColumnInfo(
+                    name=col_name,
+                    data_type=data_type,
+                    nullable=(nullable == "YES"),
+                    comment=col_comment or "",
+                )
+            )
 
         # Get row count
         if include_row_counts:

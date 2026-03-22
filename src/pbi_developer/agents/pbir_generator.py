@@ -44,9 +44,8 @@ def generate_pbir_report(
         PBIRReport model ready for folder building.
     """
     report_settings = ReportSettings()
-    if style:
-        if "theme_name" in style:
-            report_settings.theme_name = style["theme_name"]
+    if style and "theme_name" in style:
+        report_settings.theme_name = style["theme_name"]
 
     report = PBIRReport(
         name=report_name,

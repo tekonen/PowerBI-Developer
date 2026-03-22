@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from pbi_developer.utils.logging import get_logger
 
@@ -52,6 +51,7 @@ class RelationshipInfo:
 @dataclass
 class SemanticModelMetadata:
     """Complete metadata for a Power BI semantic model."""
+
     model_name: str = ""
     tables: list[str] = field(default_factory=list)
     columns: list[ColumnMetadata] = field(default_factory=list)

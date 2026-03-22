@@ -1,7 +1,5 @@
 """Tests for PBIR models."""
 
-import json
-
 from pbi_developer.pbir.models import (
     DataFieldBinding,
     PBIRDefinition,

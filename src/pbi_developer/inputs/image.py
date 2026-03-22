@@ -23,8 +23,9 @@ def load_image(path: Path) -> bytes:
 
 def resize_if_needed(image_bytes: bytes, max_dimension: int = 2048) -> bytes:
     """Resize image if it exceeds max dimension (for API limits)."""
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     img = Image.open(io.BytesIO(image_bytes))
     w, h = img.size

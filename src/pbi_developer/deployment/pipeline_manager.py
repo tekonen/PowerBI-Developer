@@ -72,10 +72,7 @@ def promote(
         )
 
     if require_approval and target.name == "prod":
-        logger.warning(
-            f"Production promotion requires approval. "
-            f"Promoting from {from_stage} to {target.name}."
-        )
+        logger.warning(f"Production promotion requires approval. Promoting from {from_stage} to {target.name}.")
         # In a real implementation, this would:
         # 1. Send notification to approvers
         # 2. Wait for approval
@@ -86,7 +83,7 @@ def promote(
         from pbi_developer.connectors.powerbi_rest import PowerBIClient
 
         client = PowerBIClient()
-        result = client.deploy_pipeline_stage(
+        client.deploy_pipeline_stage(
             pipeline_id,
             source.order,
             items=items,
@@ -112,6 +109,7 @@ def get_pipeline_status(pipeline_id: str) -> dict[str, Any]:
     """Get the current status of a deployment pipeline."""
     try:
         from pbi_developer.connectors.powerbi_rest import PowerBIClient
+
         client = PowerBIClient()
         pipelines = client.list_pipelines()
         for p in pipelines:

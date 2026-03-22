@@ -148,11 +148,10 @@ class RLSAgent(BaseAgent):
         Returns:
             Dict with roles, DAX filters, validation results, and TMDL output.
         """
-        import json
 
         examples_text = "\n".join(
             f"- **{ex['user']}**: should see {ex['expected']}"
-            + (f" (should NOT see: {ex['should_not_see']})" if ex.get('should_not_see') else "")
+            + (f" (should NOT see: {ex['should_not_see']})" if ex.get("should_not_see") else "")
             for ex in examples
         )
 
@@ -204,6 +203,7 @@ class RLSAgent(BaseAgent):
 
         try:
             from pbi_developer.connectors.powerbi_rest import PowerBIClient
+
             client = PowerBIClient()
 
             for assignment in rls_config.get("member_assignments", []):
@@ -211,18 +211,22 @@ class RLSAgent(BaseAgent):
                 for member in assignment.get("members", []):
                     try:
                         client.add_rls_member(dataset_id, role_name, member)
-                        results.append({
-                            "role": role_name,
-                            "member": member,
-                            "status": "assigned",
-                        })
+                        results.append(
+                            {
+                                "role": role_name,
+                                "member": member,
+                                "status": "assigned",
+                            }
+                        )
                     except Exception as e:
-                        results.append({
-                            "role": role_name,
-                            "member": member,
-                            "status": "failed",
-                            "error": str(e),
-                        })
+                        results.append(
+                            {
+                                "role": role_name,
+                                "member": member,
+                                "status": "failed",
+                                "error": str(e),
+                            }
+                        )
 
         except Exception as e:
             logger.error(f"RLS assignment failed: {e}")

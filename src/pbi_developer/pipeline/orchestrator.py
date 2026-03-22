@@ -15,14 +15,16 @@ Manages state between steps, handles retries, and reports progress.
 
 from __future__ import annotations
 
-import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from pbi_developer.config import settings
-from pbi_developer.pipeline.stages import PipelineState, StageStatus
+from pbi_developer.pipeline.stages import PipelineState
 from pbi_developer.utils.logging import get_logger
+
+ProgressCallback = Callable[[str, str], None] | None
 
 logger = get_logger(__name__)
 
@@ -30,6 +32,7 @@ logger = get_logger(__name__)
 @dataclass
 class PipelineResult:
     """Final result of the pipeline execution."""
+
     success: bool = False
     output_path: Path | None = None
     error: str | None = None
@@ -42,6 +45,7 @@ def run_pipeline(
     output_dir: Path,
     report_name: str = "Report",
     dry_run: bool = True,
+    progress_callback: ProgressCallback = None,
 ) -> PipelineResult:
     """Run the full pipeline from inputs to PBIR output.
 
@@ -58,23 +62,33 @@ def run_pipeline(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    def _notify(stage: str, status: str) -> None:
+        if progress_callback:
+            progress_callback(stage, status)
+
     try:
         # Step 1: Requirements Ingestion
         state.set_running("ingestion")
+        _notify("ingestion", "running")
         brief_data = _step_1_ingest(inputs)
         state.set_completed("ingestion", {"brief": brief_data})
+        _notify("ingestion", "completed")
         logger.info("Step 1 complete: Requirements ingested")
 
         # Step 2: Semantic Model Connection
         state.set_running("model_connection")
+        _notify("model_connection", "running")
         model_metadata = _step_2_connect_model(inputs, dry_run)
         state.set_completed("model_connection")
+        _notify("model_connection", "completed")
         logger.info("Step 2 complete: Model metadata loaded")
 
         # Step 3: Wireframe Design
         state.set_running("wireframe")
+        _notify("wireframe", "running")
         style = _load_style(inputs.get("style_template"))
         from pbi_developer.agents.wireframe import WireframeAgent
+
         wireframe_agent = WireframeAgent()
         wireframe = wireframe_agent.design(
             brief_data,
@@ -82,19 +96,25 @@ def run_pipeline(
             style=style,
         )
         state.set_completed("wireframe", {"wireframe": wireframe}, wireframe_agent.token_usage)
+        _notify("wireframe", "completed")
         logger.info("Step 3 complete: Wireframe designed")
 
         # Step 4: Field Mapping
         state.set_running("field_mapping")
+        _notify("field_mapping", "running")
         from pbi_developer.agents.field_mapper import FieldMapperAgent
+
         mapper = FieldMapperAgent()
         field_mapped = mapper.map_fields(wireframe, model_metadata)
         state.set_completed("field_mapping", {"field_mapped": field_mapped}, mapper.token_usage)
+        _notify("field_mapping", "completed")
         logger.info("Step 4 complete: Fields mapped")
 
         # Step 5: QA Validation (with retry loop)
         state.set_running("qa")
+        _notify("qa", "running")
         from pbi_developer.agents.qa import QAAgent
+
         qa_agent = QAAgent()
         max_retries = settings.pipeline.max_qa_retries
 
@@ -114,24 +134,34 @@ def run_pipeline(
                     state=state,
                 )
 
-        state.set_completed("qa", {"qa_issues": [
-            {"severity": i.severity, "visual_id": i.visual_id, "description": i.description}
-            for i in qa_result.issues
-        ]}, qa_agent.token_usage)
+        state.set_completed(
+            "qa",
+            {
+                "qa_issues": [
+                    {"severity": i.severity, "visual_id": i.visual_id, "description": i.description}
+                    for i in qa_result.issues
+                ]
+            },
+            qa_agent.token_usage,
+        )
+        _notify("qa", "completed")
         logger.info("Step 5 complete: QA passed")
 
         # Step 6: PBIR Conversion
         state.set_running("pbir_generation")
+        _notify("pbir_generation", "running")
         from pbi_developer.agents.pbir_generator import generate_pbir_report
         from pbi_developer.pbir.builder import build_pbir_folder
 
         report = generate_pbir_report(field_mapped, report_name=report_name, style=style)
         report_dir = build_pbir_folder(report, output_dir)
         state.set_completed("pbir_generation", {"report_dir": str(report_dir)})
+        _notify("pbir_generation", "completed")
         logger.info(f"Step 6 complete: PBIR generated at {report_dir}")
 
         # Validate generated output
         from pbi_developer.pbir.validator import validate_pbir_folder
+
         validation = validate_pbir_folder(report_dir)
         if not validation.valid:
             logger.warning(f"PBIR validation issues: {validation.errors}")
@@ -139,14 +169,18 @@ def run_pipeline(
         # Step 7: Publishing (skipped in dry run)
         if dry_run:
             state.set_skipped("publishing")
+            _notify("publishing", "completed")
             logger.info("Step 7 skipped: Dry run mode (no deployment)")
         else:
             state.set_running("publishing")
+            _notify("publishing", "running")
             # Deployment would happen here
             state.set_completed("publishing")
+            _notify("publishing", "completed")
 
         # Step 8: RLS (skipped unless explicitly configured)
         state.set_skipped("rls")
+        _notify("rls", "completed")
 
         # Save pipeline state
         _save_state(state, output_dir)
@@ -186,6 +220,7 @@ def run_wireframe_only(
     brief_data = _step_1_ingest(inputs)
 
     from pbi_developer.agents.wireframe import WireframeAgent
+
     agent = WireframeAgent()
     wireframe = agent.design(brief_data)
 
@@ -208,17 +243,19 @@ def _step_1_ingest(inputs: dict[str, Path]) -> dict[str, Any]:
         parts.append(text)
         questions = parse_user_questions(text)
         if questions:
-            parts.append(f"\n## Extracted Questions\n" + "\n".join(f"- {q}" for q in questions))
+            parts.append("\n## Extracted Questions\n" + "\n".join(f"- {q}" for q in questions))
 
     # Load PowerPoint
     if "pptx" in inputs:
         from pbi_developer.inputs.pptx_parser import parse_pptx, slides_to_text
+
         pptx_result = parse_pptx(inputs["pptx"])
         parts.append(f"\n## PowerPoint Mockup\n{slides_to_text(pptx_result)}")
 
     # Load video frames
     if "video" in inputs:
         from pbi_developer.inputs.video import extract_key_frames
+
         frames = extract_key_frames(inputs["video"])
         images.extend(frames)
         parts.append(f"\n## Video Recording\n{len(frames)} key frames extracted (attached as images)")
@@ -238,6 +275,7 @@ def _step_2_connect_model(inputs: dict[str, Path], dry_run: bool) -> str:
     """Step 2: Load or fetch semantic model metadata."""
     if "model_metadata" in inputs:
         from pbi_developer.connectors.xmla import load_metadata_from_file
+
         return load_metadata_from_file(inputs["model_metadata"])
 
     if dry_run:
@@ -256,9 +294,11 @@ def _load_style(style_path: Path | None) -> dict[str, Any] | None:
 
     if style_path.is_dir():
         from pbi_developer.pbir.theme import extract_style_from_pbir
+
         return extract_style_from_pbir(style_path).model_dump()
     elif style_path.suffix == ".json":
         from pbi_developer.pbir.theme import extract_style_from_json
+
         return extract_style_from_json(style_path).model_dump()
     return None
 

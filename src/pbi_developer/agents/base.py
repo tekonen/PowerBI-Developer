@@ -11,6 +11,7 @@ from typing import Any
 import anthropic
 
 from pbi_developer.config import settings
+from pbi_developer.exceptions import AgentError
 from pbi_developer.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -60,9 +61,7 @@ class BaseAgent:
         response = self._call_with_retry(**kwargs)
         self._total_input_tokens += response.usage.input_tokens
         self._total_output_tokens += response.usage.output_tokens
-        logger.info(
-            f"[{self.agent_name}] tokens: in={response.usage.input_tokens} out={response.usage.output_tokens}"
-        )
+        logger.info(f"[{self.agent_name}] tokens: in={response.usage.input_tokens} out={response.usage.output_tokens}")
         return self._extract_response(response)
 
     def call_structured(
@@ -105,9 +104,7 @@ class BaseAgent:
             "output_tokens": self._total_output_tokens,
         }
 
-    def _build_content(
-        self, prompt: str, images: list[Path | bytes] | None
-    ) -> list[dict[str, Any]]:
+    def _build_content(self, prompt: str, images: list[Path | bytes] | None) -> list[dict[str, Any]]:
         """Build message content with text and optional images."""
         content: list[dict[str, Any]] = []
         if images:
@@ -119,14 +116,16 @@ class BaseAgent:
                     img_bytes = img
                     media_type = "image/png"
                 b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
-                content.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": media_type,
-                        "data": b64,
-                    },
-                })
+                content.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": b64,
+                        },
+                    }
+                )
         content.append({"type": "text", "text": prompt})
         return content
 
@@ -141,7 +140,7 @@ class BaseAgent:
                 wait = 2 ** (attempt + 1)
                 logger.warning(f"[{self.agent_name}] Retry {attempt + 1}/{max_retries} after {wait}s: {e}")
                 time.sleep(wait)
-        raise RuntimeError("Unreachable")
+        raise AgentError(f"[{self.agent_name}] API call failed after {max_retries} retries")
 
     @staticmethod
     def _extract_response(response: Any) -> str | dict[str, Any]:

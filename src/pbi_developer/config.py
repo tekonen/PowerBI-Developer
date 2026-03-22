@@ -10,7 +10,6 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-
 load_dotenv()
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -54,22 +53,40 @@ class PipelineConfig(BaseModel):
 
 
 class ReportStandards(BaseModel):
-    color_palette: list[str] = Field(default_factory=lambda: [
-        "#118DFF", "#12239E", "#E66C37", "#6B007B",
-        "#E044A7", "#744EC2", "#D9B300", "#D64550",
-    ])
-    preferred_visuals: list[str] = Field(default_factory=lambda: [
-        "card", "clusteredBarChart", "lineChart", "table", "slicer",
-    ])
-    page_structure: dict[str, Any] = Field(default_factory=lambda: {
-        "max_visuals_per_page": 8,
-        "header_height": 60,
-        "margin": 20,
-    })
-    naming_rules: dict[str, str] = Field(default_factory=lambda: {
-        "measures_prefix": "",
-        "page_naming": "descriptive",
-    })
+    color_palette: list[str] = Field(
+        default_factory=lambda: [
+            "#118DFF",
+            "#12239E",
+            "#E66C37",
+            "#6B007B",
+            "#E044A7",
+            "#744EC2",
+            "#D9B300",
+            "#D64550",
+        ]
+    )
+    preferred_visuals: list[str] = Field(
+        default_factory=lambda: [
+            "card",
+            "clusteredBarChart",
+            "lineChart",
+            "table",
+            "slicer",
+        ]
+    )
+    page_structure: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "max_visuals_per_page": 8,
+            "header_height": 60,
+            "margin": 20,
+        }
+    )
+    naming_rules: dict[str, str] = Field(
+        default_factory=lambda: {
+            "measures_prefix": "",
+            "page_naming": "descriptive",
+        }
+    )
 
 
 class Settings(BaseModel):

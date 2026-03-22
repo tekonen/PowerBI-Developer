@@ -145,10 +145,12 @@ class PlannerAgent(BaseAgent):
         ]
 
         if model_metadata:
-            prompt_parts.extend([
-                "\n\n## Available Semantic Model\n",
-                model_metadata,
-            ])
+            prompt_parts.extend(
+                [
+                    "\n\n## Available Semantic Model\n",
+                    model_metadata,
+                ]
+            )
 
         if mockup_images:
             prompt_parts.append(

@@ -6,10 +6,8 @@ Converts slides to images for Claude vision interpretation.
 
 from __future__ import annotations
 
-import io
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from pbi_developer.utils.logging import get_logger
 
@@ -19,6 +17,7 @@ logger = get_logger(__name__)
 @dataclass
 class ShapeInfo:
     """Extracted information about a PowerPoint shape."""
+
     shape_type: str
     name: str
     text: str
@@ -32,6 +31,7 @@ class ShapeInfo:
 @dataclass
 class SlideInfo:
     """Extracted information about a PowerPoint slide."""
+
     index: int
     shapes: list[ShapeInfo] = field(default_factory=list)
     title: str = ""
@@ -41,6 +41,7 @@ class SlideInfo:
 @dataclass
 class PptxParseResult:
     """Result of parsing a PowerPoint file."""
+
     slides: list[SlideInfo] = field(default_factory=list)
     slide_images: list[bytes] = field(default_factory=list)
     summary: str = ""
@@ -52,7 +53,6 @@ def parse_pptx(path: Path) -> PptxParseResult:
     Returns structured slide data and slide images for vision analysis.
     """
     from pptx import Presentation
-    from pptx.util import Emu
 
     prs = Presentation(str(path))
     result = PptxParseResult()
@@ -111,9 +111,7 @@ def slides_to_text(result: PptxParseResult) -> str:
                 px_top = shape.top // 9525
                 px_w = shape.width // 9525
                 px_h = shape.height // 9525
-                parts.append(
-                    f"- [{shape.name}] at ({px_left},{px_top}) {px_w}x{px_h}px: \"{shape.text}\""
-                )
+                parts.append(f'- [{shape.name}] at ({px_left},{px_top}) {px_w}x{px_h}px: "{shape.text}"')
                 if shape.fill_color:
                     parts[-1] += f" (color: {shape.fill_color})"
     return "\n".join(parts)

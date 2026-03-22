@@ -28,6 +28,7 @@ REQUIRED_PROPERTIES = {
 @dataclass
 class ValidationResult:
     """Result of PBIR validation."""
+
     valid: bool = True
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -112,9 +113,7 @@ def validate_pbir_folder(report_dir: Path) -> ValidationResult:
     return result
 
 
-def _validate_json_file(
-    path: Path, file_type: str, result: ValidationResult
-) -> dict[str, Any] | None:
+def _validate_json_file(path: Path, file_type: str, result: ValidationResult) -> dict[str, Any] | None:
     """Validate a JSON file has valid syntax and required properties."""
     result.files_checked += 1
     try:
@@ -134,6 +133,7 @@ def _validate_json_file(
     if schema_path.exists():
         try:
             import jsonschema
+
             with open(schema_path) as f:
                 schema = json.load(f)
             jsonschema.validate(data, schema)

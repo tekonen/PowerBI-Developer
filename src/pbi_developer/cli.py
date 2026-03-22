@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 app = typer.Typer(
@@ -16,6 +16,34 @@ app = typer.Typer(
 )
 console = Console()
 
+STAGE_LABELS: dict[str, str] = {
+    "ingestion": "Ingesting requirements",
+    "model_connection": "Loading semantic model",
+    "wireframe": "Designing wireframe",
+    "field_mapping": "Mapping fields",
+    "qa": "Validating (QA)",
+    "pbir_generation": "Generating PBIR",
+    "publishing": "Publishing",
+    "rls": "RLS configuration",
+}
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        from pbi_developer import __version__
+
+        console.print(f"pbi-dev {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool | None = typer.Option(
+        None, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit"
+    ),
+) -> None:
+    """AI-powered Power BI developer tool using Claude Sonnet."""
+
 
 @app.command()
 def generate(
@@ -23,16 +51,21 @@ def generate(
     pptx: Path = typer.Option(None, "--pptx", "-p", help="Path to PowerPoint mockup"),
     video: Path = typer.Option(None, "--video", "-v", help="Path to screen recording"),
     image: Path = typer.Option(None, "--image", "-i", help="Path to screenshot/mockup image"),
-    model_metadata: Path = typer.Option(None, "--model-metadata", "-m", help="Path to model_metadata.md (dry run mode)"),
-    style_template: Path = typer.Option(None, "--style", "-s", help="Path to style template (JSON, PBIR folder, or theme)"),
+    model_metadata: Path = typer.Option(
+        None, "--model-metadata", "-m", help="Path to model_metadata.md (dry run mode)"
+    ),
+    style_template: Path = typer.Option(
+        None, "--style", "-s", help="Path to style template (JSON, PBIR folder, or theme)"
+    ),
     output_dir: Path = typer.Option("./output", "--output", "-o", help="Output directory for PBIR files"),
     report_name: str = typer.Option("Report", "--name", "-n", help="Report name"),
     dry_run: bool = typer.Option(True, "--dry-run/--live", help="Dry run (no live connections)"),
+    verbose: bool = typer.Option(False, "--verbose", help="Show token usage per stage"),
 ) -> None:
     """Full pipeline: input -> wireframe -> PBIR report."""
     from pbi_developer.pipeline.orchestrator import run_pipeline
 
-    console.print("[bold]Starting AI Power BI Developer pipeline[/bold]")
+    console.print("[bold]Starting AI Power BI Developer pipeline[/bold]\n")
 
     inputs = {
         "brief": brief,
@@ -49,15 +82,34 @@ def generate(
         console.print("[red]Error: At least one input is required (--brief, --pptx, --video, --image)[/red]")
         raise typer.Exit(1)
 
-    result = run_pipeline(
-        inputs=inputs,
-        output_dir=output_dir,
-        report_name=report_name,
-        dry_run=dry_run,
-    )
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Starting pipeline...", total=8)
+
+        def on_progress(stage: str, status: str) -> None:
+            label = STAGE_LABELS.get(stage, stage)
+            if status == "running":
+                progress.update(task, description=f"[cyan]{label}...[/cyan]")
+            elif status == "completed":
+                progress.advance(task)
+                progress.update(task, description=f"[green]{label} done[/green]")
+
+        result = run_pipeline(
+            inputs=inputs,
+            output_dir=output_dir,
+            report_name=report_name,
+            dry_run=dry_run,
+            progress_callback=on_progress,
+        )
 
     if result.success:
         console.print(f"\n[green]Report generated successfully at: {result.output_path}[/green]")
+        if verbose and result.state:
+            total = result.state.total_tokens
+            console.print(f"[dim]Tokens: in={total['input_tokens']} out={total['output_tokens']}[/dim]")
     else:
         console.print(f"\n[red]Pipeline failed: {result.error}[/red]")
         raise typer.Exit(1)
@@ -154,7 +206,7 @@ def validate(
 @app.command()
 def deploy(
     report_dir: Path = typer.Argument(..., help="Path to PBIR .Report folder"),
-    workspace_id: Optional[str] = typer.Option(None, "--workspace", "-w", help="Target workspace ID"),
+    workspace_id: str | None = typer.Option(None, "--workspace", "-w", help="Target workspace ID"),
     stage: str = typer.Option("dev", "--stage", help="Deployment stage (dev/test/prod)"),
 ) -> None:
     """Deploy report to Power BI Service."""
@@ -212,7 +264,7 @@ def rls(
     examples_file: Path = typer.Option(..., "--examples", "-e", help="JSON file with verified user examples"),
     model_metadata: Path = typer.Option(..., "--model-metadata", "-m", help="Path to model_metadata.md"),
     output: Path = typer.Option("./rls_config.json", "--output", "-o", help="Output RLS config JSON"),
-    dataset_id: Optional[str] = typer.Option(None, "--dataset-id", help="Dataset ID for live RLS assignment"),
+    dataset_id: str | None = typer.Option(None, "--dataset-id", help="Dataset ID for live RLS assignment"),
 ) -> None:
     """Generate RLS rules from natural language + verified examples.
 

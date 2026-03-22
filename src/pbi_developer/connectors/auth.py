@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from pbi_developer.config import settings
+from pbi_developer.exceptions import ConnectionError as PBIConnectionError
 from pbi_developer.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -19,7 +20,7 @@ def get_powerbi_token() -> str:
 
     cfg = settings.powerbi
     if not all([cfg.tenant_id, cfg.client_id, cfg.client_secret]):
-        raise ValueError(
+        raise PBIConnectionError(
             "Missing Azure credentials. Set AZURE_TENANT_ID, AZURE_CLIENT_ID, "
             "and AZURE_CLIENT_SECRET environment variables."
         )
@@ -34,7 +35,7 @@ def get_powerbi_token() -> str:
     result = app.acquire_token_for_client(scopes=[cfg.scope])
     if "access_token" not in result:
         error = result.get("error_description", result.get("error", "Unknown error"))
-        raise RuntimeError(f"Failed to acquire Power BI token: {error}")
+        raise PBIConnectionError(f"Failed to acquire Power BI token: {error}")
 
     logger.info("Power BI access token acquired")
     return result["access_token"]
@@ -46,7 +47,7 @@ def get_snowflake_connection() -> Any:
 
     cfg = settings.snowflake
     if not all([cfg.account, cfg.user, cfg.password]):
-        raise ValueError(
+        raise PBIConnectionError(
             "Missing Snowflake credentials. Set SNOWFLAKE_ACCOUNT, "
             "SNOWFLAKE_USER, and SNOWFLAKE_PASSWORD environment variables."
         )
@@ -74,7 +75,7 @@ def test_connection(target: str) -> tuple[bool, str]:
     """
     if target == "powerbi":
         try:
-            token = get_powerbi_token()
+            get_powerbi_token()
             return True, "Power BI authentication successful"
         except Exception as e:
             return False, f"Power BI auth failed: {e}"

@@ -233,9 +233,7 @@ class QAAgent(BaseAgent):
                             f"to the '{role}' role",
                         )
 
-    def _ai_review(
-        self, wireframe: dict[str, Any], model_metadata: str
-    ) -> dict[str, Any]:
+    def _ai_review(self, wireframe: dict[str, Any], model_metadata: str) -> dict[str, Any]:
         """Use Claude for semantic QA checks."""
         import json
 
