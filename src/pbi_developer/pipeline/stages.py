@@ -18,6 +18,19 @@ from enum import StrEnum
 from typing import Any
 
 
+STAGE_LABELS: dict[str, str] = {
+    "ingestion": "Ingesting requirements",
+    "model_connection": "Loading semantic model",
+    "wireframe": "Designing wireframe",
+    "field_mapping": "Mapping fields",
+    "qa": "Validating (QA)",
+    "pbir_generation": "Generating PBIR",
+    "publishing": "Publishing",
+    "rls": "RLS configuration",
+    "dax": "Generating DAX measures",
+}
+
+
 class StageStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"

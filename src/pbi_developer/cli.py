@@ -9,24 +9,14 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from pbi_developer.pipeline.stages import STAGE_LABELS
+
 app = typer.Typer(
     name="pbi-dev",
     help="AI-powered Power BI developer tool using Claude Sonnet.",
     no_args_is_help=True,
 )
 console = Console()
-
-STAGE_LABELS: dict[str, str] = {
-    "ingestion": "Ingesting requirements",
-    "model_connection": "Loading semantic model",
-    "wireframe": "Designing wireframe",
-    "field_mapping": "Mapping fields",
-    "qa": "Validating (QA)",
-    "pbir_generation": "Generating PBIR",
-    "publishing": "Publishing",
-    "rls": "RLS configuration",
-    "dax": "Generating DAX measures",
-}
 
 
 def _version_callback(value: bool) -> None:

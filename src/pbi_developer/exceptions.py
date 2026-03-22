@@ -19,7 +19,7 @@ class ValidationError(PBIDevError):
     """PBIR or QA validation failure."""
 
 
-class ConnectionError(PBIDevError):
+class ConnectorError(PBIDevError):
     """External system connection failure."""
 
 
