@@ -52,6 +52,7 @@ def generate(
     pptx: Path = typer.Option(None, "--pptx", "-p", help="Path to PowerPoint mockup"),
     video: Path = typer.Option(None, "--video", "-v", help="Path to screen recording"),
     image: Path = typer.Option(None, "--image", "-i", help="Path to screenshot/mockup image"),
+    svg: Path = typer.Option(None, "--svg", help="Path to SVG diagram (business model or table relationships)"),
     model_metadata: Path = typer.Option(
         None, "--model-metadata", "-m", help="Path to model_metadata.md (dry run mode)"
     ),
@@ -73,6 +74,7 @@ def generate(
         "pptx": pptx,
         "video": video,
         "image": image,
+        "svg": svg,
         "model_metadata": model_metadata,
         "style_template": style_template,
     }
@@ -122,13 +124,14 @@ def wireframe(
     pptx: Path = typer.Option(None, "--pptx", "-p", help="Path to PowerPoint mockup"),
     video: Path = typer.Option(None, "--video", "-v", help="Path to screen recording"),
     image: Path = typer.Option(None, "--image", "-i", help="Path to screenshot image"),
+    svg: Path = typer.Option(None, "--svg", help="Path to SVG diagram (business model or table relationships)"),
     output: Path = typer.Option("./wireframe.json", "--output", "-o", help="Output wireframe JSON"),
 ) -> None:
     """Generate wireframe only from inputs."""
     from pbi_developer.pipeline.orchestrator import run_wireframe_only
 
     console.print("[bold]Generating wireframe...[/bold]")
-    inputs = {k: v for k, v in {"brief": brief, "pptx": pptx, "video": video, "image": image}.items() if v}
+    inputs = {k: v for k, v in {"brief": brief, "pptx": pptx, "video": video, "image": image, "svg": svg}.items() if v}
 
     if not inputs:
         console.print("[red]Error: At least one input required[/red]")
@@ -139,6 +142,100 @@ def wireframe(
         console.print(f"[green]Wireframe saved to: {output}[/green]")
     else:
         console.print("[red]Wireframe generation failed[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def graph(
+    action: str = typer.Argument(help="Action: show, clear, export, import"),
+    path: Path = typer.Option(None, "--path", "-p", help="Path for import/export (JSON or SVG)"),
+) -> None:
+    """Manage the persistent knowledge graph.
+
+    Actions:
+      show   — Display graph summary (tables, relationships, entity count)
+      clear  — Remove all entities and relationships
+      export — Save graph to JSON file (--path required)
+      import — Import SVG diagram or metadata file into graph (--path required)
+    """
+    from pbi_developer.knowledge_graph import KnowledgeGraphStore
+
+    kg = KnowledgeGraphStore()
+
+    if action == "show":
+        tables = kg.get_tables()
+        rels = kg.get_relationships()
+        n_nodes = kg.graph.number_of_nodes()
+        n_edges = kg.graph.number_of_edges()
+        console.print(f"[bold]Knowledge Graph[/bold]: {n_nodes} nodes, {n_edges} edges")
+        console.print(f"Tables: {len(tables)}, Relationships: {len(rels)}")
+        if tables:
+            console.print("\n[bold]Tables:[/bold]")
+            for t in tables:
+                console.print(f"  - {t['name']}")
+        if rels:
+            console.print("\n[bold]Relationships:[/bold]")
+            for r in rels:
+                card = r.get("cardinality", "")
+                card_str = f" ({card})" if card else ""
+                console.print(f"  - {r['from_entity']} → {r['to_entity']}{card_str}")
+        if not tables and not rels:
+            console.print("[dim]Graph is empty. Import data with: pbi-dev graph import --path diagram.svg[/dim]")
+
+    elif action == "clear":
+        kg.clear()
+        kg.save()
+        console.print("[green]Knowledge graph cleared[/green]")
+
+    elif action == "export":
+        if not path:
+            console.print("[red]Error: --path required for export[/red]")
+            raise typer.Exit(1)
+        import shutil
+
+        shutil.copy2(kg.path, path)
+        console.print(f"[green]Graph exported to: {path}[/green]")
+
+    elif action == "import":
+        if not path:
+            console.print("[red]Error: --path required for import[/red]")
+            raise typer.Exit(1)
+        if not path.exists():
+            console.print(f"[red]Error: File not found: {path}[/red]")
+            raise typer.Exit(1)
+
+        if path.suffix == ".svg":
+            from pbi_developer.agents.diagram_interpreter import DiagramInterpreterAgent
+            from pbi_developer.inputs.svg_parser import parse_svg
+
+            console.print(f"Parsing SVG: {path}")
+            svg_result = parse_svg(path)
+            interpreter = DiagramInterpreterAgent()
+            interpretation = interpreter.interpret(svg_result.raster_png, svg_result.raw_text_labels)
+            kg.merge_from_svg_interpretation(interpretation)
+            kg.save()
+            entities = interpretation.get("entities", [])
+            rels = interpretation.get("relationships", [])
+            console.print(
+                f"[green]Imported {len(entities)} entities and {len(rels)} relationships "
+                f"from SVG into knowledge graph[/green]"
+            )
+        elif path.suffix in (".md", ".txt"):
+            from pbi_developer.connectors.xmla import load_metadata_from_file
+
+            console.print(f"Importing metadata: {path}")
+            # Load as text and re-parse — for now just note it's imported
+            metadata_text = load_metadata_from_file(path)
+            console.print(
+                f"[green]Metadata loaded ({len(metadata_text)} chars). "
+                "Use --model-metadata in generate for full integration.[/green]"
+            )
+        else:
+            console.print(f"[red]Unsupported file type: {path.suffix}. Use .svg or .md[/red]")
+            raise typer.Exit(1)
+
+    else:
+        console.print(f"[red]Unknown action: {action}. Use: show, clear, export, import[/red]")
         raise typer.Exit(1)
 
 

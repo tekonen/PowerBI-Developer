@@ -567,6 +567,30 @@ def _step_1_ingest(inputs: dict[str, Path]) -> dict[str, Any]:
         images.append(img_data)
         parts.append("\n## Screenshot/Mockup\nImage attached for analysis")
 
+    # Load SVG diagram
+    if "svg" in inputs:
+        from pbi_developer.agents.diagram_interpreter import DiagramInterpreterAgent
+        from pbi_developer.inputs.svg_parser import parse_svg, svg_texts_to_summary
+        from pbi_developer.knowledge_graph import KnowledgeGraphStore
+
+        svg_result = parse_svg(inputs["svg"])
+        if svg_result.raster_png:
+            images.append(svg_result.raster_png)
+
+        # Interpret diagram structure via Claude vision
+        interpreter = DiagramInterpreterAgent()
+        interpretation = interpreter.interpret(svg_result.raster_png, svg_result.raw_text_labels)
+
+        # Store in persistent knowledge graph
+        kg = KnowledgeGraphStore()
+        kg.merge_from_svg_interpretation(interpretation)
+        kg.save()
+
+        parts.append(f"\n## SVG Diagram\n{svg_texts_to_summary(svg_result)}")
+        kg_context = kg.to_brief_context()
+        if kg_context:
+            parts.append(f"\n## Knowledge Graph Context\n{kg_context}")
+
     brief_text = "\n".join(parts)
     planner = PlannerAgent()
     return planner.plan(brief_text, mockup_images=images if images else None)
@@ -574,32 +598,48 @@ def _step_1_ingest(inputs: dict[str, Path]) -> dict[str, Any]:
 
 def _step_2_connect_model(inputs: dict[str, Path], dry_run: bool) -> str:
     """Step 2: Load or fetch semantic model metadata."""
+    metadata_text = ""
+
     if "model_metadata" in inputs:
         from pbi_developer.connectors.xmla import load_metadata_from_file
 
-        return load_metadata_from_file(inputs["model_metadata"])
+        metadata_text = load_metadata_from_file(inputs["model_metadata"])
+    elif not dry_run:
+        # Live mode: try REST API metadata fetch
+        try:
+            from pbi_developer.connectors.powerbi_rest import PowerBIClient
+            from pbi_developer.connectors.xmla import fetch_metadata_via_rest
 
-    if dry_run:
-        logger.warning("No model metadata provided in dry run mode. Using empty metadata.")
-        return "# Semantic Model\n\nNo model metadata provided. Run with --model-metadata flag."
+            client = PowerBIClient()
+            datasets = client.list_datasets()
+            if datasets:
+                dataset_id = datasets[0]["id"]
+                logger.info(f"Fetching metadata for dataset {dataset_id} via REST API")
+                metadata = fetch_metadata_via_rest(dataset_id)
+                metadata_text = metadata.to_markdown()
+            else:
+                logger.warning("No datasets found in workspace. Use --model-metadata flag.")
+        except Exception as e:
+            logger.warning(f"REST API metadata fetch failed: {e}. Use --model-metadata flag.")
 
-    # Live mode: try REST API metadata fetch
-    try:
-        from pbi_developer.connectors.powerbi_rest import PowerBIClient
-        from pbi_developer.connectors.xmla import fetch_metadata_via_rest
+    # Supplement with knowledge graph if available
+    from pbi_developer.knowledge_graph import KnowledgeGraphStore
 
-        client = PowerBIClient()
-        datasets = client.list_datasets()
-        if datasets:
-            dataset_id = datasets[0]["id"]
-            logger.info(f"Fetching metadata for dataset {dataset_id} via REST API")
-            metadata = fetch_metadata_via_rest(dataset_id)
-            return metadata.to_markdown()
-        logger.warning("No datasets found in workspace. Use --model-metadata flag.")
-        return "# Semantic Model\n\nNo datasets found in workspace."
-    except Exception as e:
-        logger.warning(f"REST API metadata fetch failed: {e}. Use --model-metadata flag.")
-        return f"# Semantic Model\n\nMetadata fetch failed: {e}"
+    kg = KnowledgeGraphStore()
+    kg_markdown = kg.to_metadata_markdown()
+
+    if metadata_text and kg_markdown:
+        # Existing metadata is authoritative; knowledge graph supplements
+        metadata_text += "\n\n## Supplementary: Knowledge Graph Relationships\n" + kg_markdown
+    elif kg_markdown:
+        # No other metadata source — use knowledge graph as primary
+        metadata_text = kg_markdown
+    elif not metadata_text:
+        if dry_run:
+            logger.warning("No model metadata provided in dry run mode. Using empty metadata.")
+        metadata_text = "# Semantic Model\n\nNo model metadata provided. Run with --model-metadata flag."
+
+    return metadata_text
 
 
 def _load_style(style_path: Path | None) -> dict[str, Any] | None:
