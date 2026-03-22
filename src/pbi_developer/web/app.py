@@ -87,6 +87,7 @@ async def page_settings(request: Request):
 
     config = {
         "claude_model": settings.claude.model,
+        "api_base_url": settings.claude.base_url or "(default)",
         "workspace_id": _mask(settings.powerbi.workspace_id),
         "tenant_id": _mask(settings.powerbi.tenant_id),
         "client_id": _mask(settings.powerbi.client_id),
@@ -123,8 +124,13 @@ async def api_create_run(
     style_template: UploadFile | None = File(None),
     report_name: str = Form("Report"),
     dry_run: bool = Form(True),
+    wizard: bool = Form(False),
 ):
-    """Start a new pipeline run."""
+    """Start a new pipeline run.
+
+    When wizard=True, files are saved but the pipeline is NOT started.
+    The wizard UI drives execution step-by-step via /step/* endpoints.
+    """
     run_id = store.create_run(report_name=report_name, dry_run=dry_run)
     upload_dir = store.get_upload_dir(run_id)
 
@@ -147,6 +153,11 @@ async def api_create_run(
     if not inputs:
         store.update_run(run_id, status="failed", error="No input files provided")
         return JSONResponse({"run_id": run_id, "error": "No input files provided"}, status_code=400)
+
+    # Wizard mode: save files only, don't start the pipeline
+    if wizard:
+        store.update_run(run_id, wizard_step="init")
+        return JSONResponse({"run_id": run_id, "wizard": True})
 
     output_dir = store.get_output_dir(run_id)
     loop = asyncio.get_event_loop()
@@ -332,6 +343,7 @@ async def api_settings():
 
     return {
         "claude_model": settings.claude.model,
+        "api_base_url": settings.claude.base_url or "(default)",
         "max_tokens": settings.claude.max_tokens,
         "temperature": settings.claude.temperature,
         "api_key_set": bool(settings.claude.api_key),
@@ -713,12 +725,21 @@ async def api_step_accept(run_id: str, stage: str):
 
     output_dir = store.get_output_dir(run_id)
 
-    # Commit current artifacts to version control
-    _auto_commit(
-        f"Accept {stage}: {run.report_name}",
-        run_id,
-        output_dir,
-    )
+    # Commit to version control: use PBIR report path if available, else artifacts
+    commit_path = None
+    if run.output_path:
+        commit_path = Path(run.output_path)
+    else:
+        artifacts_dir = output_dir / "artifacts"
+        if artifacts_dir.exists():
+            commit_path = artifacts_dir
+
+    if commit_path:
+        _auto_commit(
+            f"Accept {stage}: {run.report_name}",
+            run_id,
+            commit_path,
+        )
 
     # Advance to next wizard step
     try:

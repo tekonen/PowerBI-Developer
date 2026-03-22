@@ -85,7 +85,7 @@ Rules:
 
 ### Wireframe Agent (Step 3)
 
-**Role**: Design the visual layout.
+**Role**: Design the visual layout with filtering logic.
 
 Rules:
 - Use a grid-based layout — no overlapping visuals
@@ -95,6 +95,11 @@ Rules:
 - Slicers should filter all visuals on the page unless specified otherwise
 - Position coordinates must be integers (no decimals)
 - Leave room for the filter pane on the right (don't extend visuals past x=1060 if filter pane is visible)
+- Assign a unique `visual_id` to every visual (format: `p{page_num}_v{visual_num}`, e.g. `p1_v1`, `p2_v3`)
+- For every slicer, specify which visuals it filters in the page's `filters` array
+- Each filter entry must include a plain-language `description` explaining the relationship (e.g. "The Region slicer filters the Revenue chart and Sales table to show only the selected region")
+- For drill-through between pages, add entries to the top-level `cross_page_filters` array
+- Filter types: `slicer` (user-controlled), `cross_filter` (visual interaction), `drill_through` (page navigation)
 
 ### Field Mapper Agent (Step 4)
 

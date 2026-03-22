@@ -39,6 +39,45 @@ def _create_run_with_artifacts(store, brief=None, wireframe=None, field_mapped=N
     return run_id, output_dir
 
 
+class TestWizardModeCreateRun:
+    """Test POST /api/runs with wizard=true does not start the pipeline."""
+
+    def test_wizard_mode_saves_files_only(self):
+        """wizard=true should create run, save files, and return without starting pipeline."""
+        client = _get_client()
+        resp = client.post(
+            "/api/runs",
+            data={"report_name": "Wizard Test", "dry_run": "true", "wizard": "true"},
+            files={"brief": ("brief.txt", io.BytesIO(b"Build a dashboard"), "text/plain")},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "run_id" in data
+        assert data.get("wizard") is True
+        assert "error" not in data
+
+    def test_non_wizard_mode_starts_pipeline(self):
+        """wizard=false (default) should start the full pipeline (background task)."""
+        from unittest.mock import MagicMock
+
+        with patch("pbi_developer.web.app.asyncio.create_task") as mock_task:
+            mock_task.return_value = MagicMock()
+            mock_task.return_value.add_done_callback = MagicMock()
+
+            client = _get_client()
+            resp = client.post(
+                "/api/runs",
+                data={"report_name": "Full Pipeline", "dry_run": "true"},
+                files={"brief": ("brief.txt", io.BytesIO(b"Build a dashboard"), "text/plain")},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "run_id" in data
+        assert "wizard" not in data  # Not wizard mode
+        mock_task.assert_called_once()  # Pipeline was started
+
+
 class TestGeneratePageWizard:
     """Test that the generate page renders the wizard template."""
 

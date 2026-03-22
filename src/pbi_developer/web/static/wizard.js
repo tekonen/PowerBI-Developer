@@ -641,6 +641,7 @@ document.getElementById('generate-form').addEventListener('submit', async (e) =>
     btn.classList.add('opacity-50');
 
     const formData = new FormData(form);
+    formData.set('wizard', 'true');
     if (!form.querySelector('[name=dry_run]').checked) {
         formData.set('dry_run', 'false');
     } else {

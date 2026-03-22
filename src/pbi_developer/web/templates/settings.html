@@ -22,6 +22,10 @@
                     <span class="ml-2">{% if config.api_key_set %}<span class="text-green-600">Set</span>{% else %}<span class="text-red-600">Not set</span>{% endif %}</span>
                 </div>
                 <div>
+                    <span class="text-gray-500">API Endpoint:</span>
+                    <span class="font-mono ml-2">{{ config.api_base_url }}</span>
+                </div>
+                <div>
                     <span class="text-gray-500">Workspace ID:</span>
                     <span class="font-mono ml-2">{{ config.workspace_id }}</span>
                 </div>

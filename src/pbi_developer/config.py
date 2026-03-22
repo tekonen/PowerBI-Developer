@@ -21,6 +21,7 @@ class ClaudeConfig(BaseModel):
     max_tokens: int = 8192
     temperature: float = 0.2
     api_key: str = Field(default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", ""))
+    base_url: str = Field(default_factory=lambda: os.environ.get("ANTHROPIC_BASE_URL", ""))
 
 
 class PowerBIConfig(BaseModel):
