@@ -1,0 +1,41 @@
+claude:
+  model: claude-sonnet-4-20250514
+  max_tokens: 8192
+  temperature: 0.2
+
+powerbi:
+  api_base: https://api.powerbi.com/v1.0/myorg
+  scope: https://analysis.windows.net/powerbi/api/.default
+
+pbir:
+  schema_version: "1.0"
+  default_page_width: 1280
+  default_page_height: 720
+
+pipeline:
+  max_qa_retries: 3
+  require_human_review: true
+
+report_standards:
+  color_palette:
+    - "#118DFF"
+    - "#12239E"
+    - "#E66C37"
+    - "#6B007B"
+    - "#E044A7"
+    - "#744EC2"
+    - "#D9B300"
+    - "#D64550"
+  preferred_visuals:
+    - card
+    - clusteredBarChart
+    - lineChart
+    - table
+    - slicer
+  page_structure:
+    max_visuals_per_page: 8
+    header_height: 60
+    margin: 20
+  naming_rules:
+    measures_prefix: ""
+    page_naming: descriptive

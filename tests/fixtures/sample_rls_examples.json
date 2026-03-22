@@ -1,0 +1,20 @@
+[
+  {
+    "user": "alice.hr@company.com",
+    "expected": "Only HR department data",
+    "should_not_see": "Sales, Engineering, Finance department data"
+  },
+  {
+    "user": "bob.sales@company.com",
+    "expected": "Only Sales department data",
+    "should_not_see": "HR, Engineering, Finance department data"
+  },
+  {
+    "user": "carol.ceo@company.com",
+    "expected": "All departments - full access"
+  },
+  {
+    "user": "dave.manager@company.com",
+    "expected": "Engineering department data only"
+  }
+]
