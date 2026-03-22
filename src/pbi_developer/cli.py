@@ -405,12 +405,17 @@ def refine(
 
 @app.command()
 def serve(
-    host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
-    port: int = typer.Option(8501, "--port", help="Port number"),
+    host: str = typer.Option("0.0.0.0", "--host", help="Bind address"),
+    port: int = typer.Option(None, "--port", help="Port number (default: $PORT or 8501)"),
     reload: bool = typer.Option(False, "--reload", help="Auto-reload on code changes (dev mode)"),
 ) -> None:
-    """Start the web GUI on http://localhost:8501."""
+    """Start the web GUI (default: http://localhost:8501)."""
+    import os
+
     import uvicorn
+
+    if port is None:
+        port = int(os.environ.get("PORT", "8501"))
 
     console.print(f"[bold]Starting web GUI at http://{host}:{port}[/bold]")
     uvicorn.run(

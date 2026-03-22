@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% set active = "versions" %}
+{% block title %}Version History — PBI Developer{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Version History</h2>
+        <div class="flex items-center space-x-3">
+            <button onclick="undoVersion()" id="undo-btn" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium disabled:opacity-40" {% if not versions or versions | length <= 1 %}disabled{% endif %}>
+                &#8592; Undo
+            </button>
+            <button onclick="redoVersion()" id="redo-btn" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium disabled:opacity-40" {% if not can_redo %}disabled{% endif %}>
+                Redo &#8594;
+            </button>
+            <button onclick="pushToRemote()" id="push-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                Push to Bitbucket
+            </button>
+        </div>
+    </div>
+
+    <!-- Remote URL configuration -->
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+        <div class="flex items-center space-x-3">
+            <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Bitbucket Remote:</label>
+            <input type="text" id="remote-url" value="{{ remote_url or '' }}" placeholder="https://bitbucket.org/your-workspace/your-repo.git" class="flex-1 border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            <button onclick="setRemote()" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm whitespace-nowrap">
+                Save Remote
+            </button>
+        </div>
+    </div>
+
+    <!-- Status message -->
+    <div id="version-status" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+    <!-- Version timeline -->
+    {% if versions %}
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-50 border-b">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hash</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Message</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Run</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in versions %}
+                <tr class="border-b hover:bg-gray-50 {% if loop.first %}bg-blue-50{% endif %}">
+                    <td class="px-4 py-3 text-sm font-mono text-gray-500">{{ v.short_hash }}</td>
+                    <td class="px-4 py-3 text-sm">{{ v.message }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-400 font-mono">{{ v.run_id or '—' }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">{{ v.timestamp[:19] }}</td>
+                    <td class="px-4 py-3 text-sm">
+                        {% if not loop.first %}
+                        <button onclick="checkoutVersion('{{ v.commit_hash }}')" class="text-blue-600 hover:underline text-xs">
+                            Restore
+                        </button>
+                        {% else %}
+                        <span class="text-xs text-blue-600 font-medium">Current</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+        <p class="text-gray-500 mb-2">No versions yet.</p>
+        <p class="text-sm text-gray-400">Versions are created automatically when you generate or refine a report.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showStatus(type, msg) {
+    const el = document.getElementById('version-status');
+    el.classList.remove('hidden', 'bg-green-50', 'text-green-700', 'bg-red-50', 'text-red-700');
+    el.classList.add(type === 'success' ? 'bg-green-50' : 'bg-red-50');
+    el.classList.add(type === 'success' ? 'text-green-700' : 'text-red-700');
+    el.textContent = msg;
+}
+
+async function undoVersion() {
+    const resp = await fetch('/api/versions/undo', { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) { showStatus('success', 'Undone to: ' + data.version.message); setTimeout(() => location.reload(), 800); }
+    else showStatus('error', data.error || 'Cannot undo');
+}
+
+async function redoVersion() {
+    const resp = await fetch('/api/versions/redo', { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) { showStatus('success', 'Redone to: ' + data.version.message); setTimeout(() => location.reload(), 800); }
+    else showStatus('error', data.error || 'Cannot redo');
+}
+
+async function checkoutVersion(hash) {
+    if (!confirm('Restore this version? Current uncommitted changes will be lost.')) return;
+    const resp = await fetch(`/api/versions/${hash}`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) { showStatus('success', 'Restored version ' + hash.slice(0, 8)); setTimeout(() => location.reload(), 800); }
+    else showStatus('error', data.error || 'Failed to restore');
+}
+
+async function pushToRemote() {
+    const btn = document.getElementById('push-btn');
+    btn.textContent = 'Pushing...';
+    btn.disabled = true;
+    const resp = await fetch('/api/versions/push', { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) showStatus('success', data.message);
+    else showStatus('error', data.error || 'Push failed');
+    btn.textContent = 'Push to Bitbucket';
+    btn.disabled = false;
+}
+
+async function setRemote() {
+    const url = document.getElementById('remote-url').value;
+    if (!url) { showStatus('error', 'Enter a Bitbucket repository URL'); return; }
+    const resp = await fetch('/api/versions/remote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+    });
+    const data = await resp.json();
+    if (data.success) showStatus('success', 'Remote URL saved');
+    else showStatus('error', data.error || 'Failed to set remote');
+}
+</script>
+{% endblock %}

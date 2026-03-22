@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from pbi_developer.web import sse
 from pbi_developer.web.models import DeployRequest, RefineRequest
 from pbi_developer.web.run_store import RunStore
+from pbi_developer.web.version_control import VersionManager
 
 # Store background task references to prevent garbage collection
 _background_tasks: set[asyncio.Task] = set()
@@ -27,6 +28,8 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 store = RunStore()
+_versions_dir = store.base_dir / "dashboard-versions"
+version_mgr = VersionManager(_versions_dir)
 
 STAGE_LABELS = {
     "ingestion": "Ingesting requirements",
@@ -161,6 +164,8 @@ async def api_create_run(
                 error=result.error,
                 stages={name: s.status.value for name, s in result.state.stages.items()} if result.state else {},
             )
+            if result.success and result.output_path:
+                _auto_commit(f"Generate: {report_name}", run_id, result.output_path)
         except Exception as e:
             store.update_run(run_id, status="failed", error=str(e))
         finally:
@@ -229,6 +234,9 @@ async def api_refine_run(run_id: str, req: RefineRequest):
                 error=result.error,
                 stages={name: s.status.value for name, s in result.state.stages.items()} if result.state else {},
             )
+            if result.success and result.output_path:
+                short = req.corrections[:60] if req.corrections else ""
+                _auto_commit(f"Refine {req.stage}: {short}", run_id, result.output_path)
         except Exception as e:
             store.update_run(run_id, status="failed", error=str(e))
         finally:
@@ -325,6 +333,106 @@ async def api_settings():
         "max_qa_retries": settings.pipeline.max_qa_retries,
         "require_human_review": settings.pipeline.require_human_review,
     }
+
+
+# ---------- Version control routes ----------
+
+
+@app.get("/versions")
+async def page_versions(request: Request):
+    versions = version_mgr.list_versions()
+    return templates.TemplateResponse(
+        name="versions.html",
+        request=request,
+        context={
+            "versions": versions,
+            "can_redo": version_mgr.can_redo,
+            "remote_url": version_mgr.get_remote(),
+        },
+    )
+
+
+@app.get("/api/versions")
+async def api_list_versions():
+    versions = version_mgr.list_versions()
+    return [
+        {
+            "commit_hash": v.commit_hash,
+            "short_hash": v.short_hash,
+            "message": v.message,
+            "timestamp": v.timestamp,
+            "run_id": v.run_id,
+        }
+        for v in versions
+    ]
+
+
+@app.post("/api/versions/undo")
+async def api_undo_version():
+    result = version_mgr.undo()
+    if result:
+        return {"success": True, "version": {"message": result.message, "hash": result.short_hash}}
+    return JSONResponse({"success": False, "error": "Nothing to undo"}, status_code=400)
+
+
+@app.post("/api/versions/redo")
+async def api_redo_version():
+    result = version_mgr.redo()
+    if result:
+        return {"success": True, "version": {"message": result.message, "hash": result.short_hash}}
+    return JSONResponse({"success": False, "error": "Nothing to redo"}, status_code=400)
+
+
+@app.post("/api/versions/{commit_hash}")
+async def api_checkout_version(commit_hash: str):
+    result = version_mgr.checkout_version(commit_hash)
+    if result:
+        return {"success": True, "version": {"message": result.message, "hash": result.short_hash}}
+    return JSONResponse({"success": False, "error": "Failed to checkout"}, status_code=400)
+
+
+@app.post("/api/versions/push")
+async def api_push_to_remote():
+    success, message = version_mgr.push_to_remote()
+    if success:
+        return {"success": True, "message": message}
+    return JSONResponse({"success": False, "error": message}, status_code=400)
+
+
+@app.post("/api/versions/remote")
+async def api_set_remote(request: Request):
+    body = await request.json()
+    url = body.get("url", "")
+    if not url:
+        return JSONResponse({"success": False, "error": "URL is required"}, status_code=400)
+    version_mgr.set_remote(url)
+    return {"success": True}
+
+
+@app.get("/api/versions/diff")
+async def api_get_diff(from_hash: str, to_hash: str):
+    diff = version_mgr.get_diff(from_hash, to_hash)
+    return {"diff": diff}
+
+
+# ---------- Helpers ----------
+
+
+def _auto_commit(message: str, run_id: str, output_path: Path | str) -> None:
+    """Copy output to version-controlled dir and commit."""
+    import shutil
+
+    output = Path(output_path) if isinstance(output_path, str) else output_path
+    if not output.exists():
+        return
+
+    # Copy output into the version-controlled directory
+    dest = _versions_dir / output.name
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(output, dest)
+
+    version_mgr.commit_version(message, run_id)
 
 
 def _mask(value: str) -> str:

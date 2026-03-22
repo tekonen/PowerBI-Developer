@@ -253,7 +253,8 @@ Deployment methods:
 | `SNOWFLAKE_PASSWORD` | For Snowflake | Snowflake password |
 | `SNOWFLAKE_WAREHOUSE` | For Snowflake | Snowflake warehouse |
 | `SNOWFLAKE_DATABASE` | For Snowflake | Snowflake database |
-| `XMLA_ENDPOINT` | For XMLA | XMLA endpoint URL |
+| `SNOWFLAKE_SCHEMA` | For Snowflake | Snowflake schema |
+| `PORT` | For Railway | Server port (default: 8501) |
 
 ### Settings (`config/settings.yaml`)
 
@@ -270,6 +271,50 @@ Controls Claude model selection, page dimensions, QA retry limits, and report st
 - Service principal registered in Entra ID with Power BI API permissions
 - Semantic model with certified, well-named measures
 - Snowflake account (if using Snowflake schema discovery)
+
+## Web GUI
+
+Start the browser-based interface:
+
+```bash
+pbi-dev serve
+```
+
+Open `http://localhost:8501`. The GUI provides:
+
+| Page | Purpose |
+|------|---------|
+| **Dashboard** | View run history, status, token usage, quick actions |
+| **Generate** | Upload files, configure parameters, watch real-time pipeline progress |
+| **Refine** | Select a previous run, pick a stage, enter corrections |
+| **Deploy** | Deploy completed reports to Power BI Service |
+| **Versions** | Git-backed version history with undo/redo and Bitbucket push |
+| **Settings** | View configuration (masked secrets), test connections |
+
+Pipeline progress is streamed in real-time via Server-Sent Events.
+
+## Version Control
+
+Every pipeline run and refinement automatically creates a git commit in `~/.pbi-dev/dashboard-versions/`. This provides:
+
+- **Undo/Redo** — step back and forward through dashboard versions from the web GUI
+- **Version history** — view all changes with timestamps and diffs
+- **Bitbucket integration** — push versions to a Bitbucket repository
+
+Configure the Bitbucket remote URL in the Versions page or Settings.
+
+## Deployment to Railway.app
+
+The project includes a `Dockerfile` and `railway.toml` for deployment to [Railway](https://railway.app):
+
+```bash
+# Deploy via Railway CLI
+railway login
+railway init
+railway up
+```
+
+Or connect your Git repository in the Railway dashboard. The app reads the `PORT` environment variable automatically.
 
 ## Supported Visual Types
 
@@ -333,6 +378,14 @@ src/pbi_developer/
 │   ├── tester.py        # Schema, BPA, field reference, DAX tests
 │   ├── deployer.py      # fabric-cicd or REST API deployment
 │   └── pipeline_manager.py  # Dev/test/prod promotion
+├── web/             # Browser-based GUI
+│   ├── app.py           # FastAPI routes + SSE streaming
+│   ├── models.py        # Request/response schemas
+│   ├── run_store.py     # Run history persistence
+│   ├── sse.py           # Server-Sent Events bridge
+│   ├── version_control.py # Git-backed undo/redo + Bitbucket push
+│   ├── templates/       # Jinja2 HTML templates
+│   └── static/          # CSS + JavaScript
 ├── cli.py           # Typer CLI entry point
 └── config.py        # Settings loader (dotenv + YAML)
 ```
