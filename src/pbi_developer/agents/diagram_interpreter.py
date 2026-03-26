@@ -122,8 +122,16 @@ OUTPUT_SCHEMA: dict[str, Any] = {
 class DiagramInterpreterAgent(BaseAgent):
     """Interprets SVG data model diagrams into structured entities and relationships."""
 
-    system_prompt = INTERPRETER_SYSTEM_PROMPT
     agent_name = "diagram_interpreter"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from pbi_developer.prompts import registry
+
+        if registry.has("diagram_interpreter"):
+            self.system_prompt = registry.get("diagram_interpreter").system_prompt
+        else:
+            self.system_prompt = INTERPRETER_SYSTEM_PROMPT
 
     def interpret(
         self,

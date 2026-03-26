@@ -119,8 +119,16 @@ RLS_OUTPUT_SCHEMA: dict[str, Any] = {
 class RLSAgent(BaseAgent):
     """Generates and validates RLS rules from natural language + examples."""
 
-    system_prompt = RLS_SYSTEM_PROMPT
     agent_name = "rls"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from pbi_developer.prompts import registry
+
+        if registry.has("rls"):
+            self.system_prompt = registry.get("rls").system_prompt
+        else:
+            self.system_prompt = RLS_SYSTEM_PROMPT
 
     def generate_rls(
         self,

@@ -1,0 +1,124 @@
+agent: wireframe
+version_label: '1.0'
+template_vars:
+- page_width
+- page_height
+- margin
+- max_visuals
+system_prompt: "You are a Power BI report architect. Given a structured dashboard brief and\nsemantic model metadata, you\
+  \ design precise report wireframes.\n\nYour wireframe output must include:\n1. Exact page definitions with dimensions\n\
+  2. For each page, exact visual definitions with:\n   - A unique visual_id (format: p{{page_num}}_v{{visual_num}}, e.g. \"\
+  p1_v1\", \"p1_v2\")\n   - Visual type (using Power BI native type names)\n   - Position (x, y) and size (width, height)\
+  \ in pixels on a {page_width}x{page_height} canvas\n   - Data intent (what the visual shows, which question it answers)\n\
+  \   - A position that doesn't overlap with other visuals on the same page\n3. For each page, a filters array describing\
+  \ filter relationships:\n   - For every slicer visual, list which other visuals it filters\n   - Include the field being\
+  \ filtered and a plain-language description\n   - Filter types: \"slicer\" (user-controlled), \"cross_filter\" (visual interaction),\n\
+  \     \"drill_through\" (navigation between pages)\n4. A cross_page_filters array for filters that span multiple pages\n\
+  \nLayout rules:\n- Canvas size: {page_width}x{page_height} pixels\n- KPI cards go at the top of the page in a row\n- Charts\
+  \ and tables go in the main body\n- Slicers go along the left or top edge\n- Leave at least {margin}px margin between visuals\n\
+  - Max {max_visuals} visuals per page\n- Use standard Power BI visual types: card, clusteredBarChart, clusteredColumnChart,\n\
+  \  lineChart, areaChart, tableEx, pivotTable, slicer, donutChart, treemap,\n  filledMap, gauge, waterfallChart, scatterChart\n\
+  \nFollow these house style rules if provided:\n- Use preferred visual types when appropriate\n- Follow naming conventions\
+  \ for page titles\n"
+output_schema:
+  type: object
+  properties:
+    pages:
+      type: array
+      items:
+        type: object
+        properties:
+          page_name:
+            type: string
+          page_purpose:
+            type: string
+          width:
+            type: integer
+          height:
+            type: integer
+          visuals:
+            type: array
+            items:
+              type: object
+              properties:
+                visual_id:
+                  type: string
+                visual_type:
+                  type: string
+                title:
+                  type: string
+                description:
+                  type: string
+                data_intent:
+                  type: string
+                x:
+                  type: integer
+                y:
+                  type: integer
+                width:
+                  type: integer
+                height:
+                  type: integer
+              required:
+              - visual_id
+              - visual_type
+              - data_intent
+              - x
+              - y
+              - width
+              - height
+          filters:
+            type: array
+            items:
+              type: object
+              properties:
+                slicer_visual_id:
+                  type: string
+                target_visual_ids:
+                  type: array
+                  items:
+                    type: string
+                filter_field:
+                  type: string
+                filter_type:
+                  type: string
+                  enum:
+                  - slicer
+                  - cross_filter
+                  - drill_through
+                description:
+                  type: string
+              required:
+              - slicer_visual_id
+              - target_visual_ids
+              - filter_type
+              - description
+        required:
+        - page_name
+        - visuals
+    cross_page_filters:
+      type: array
+      items:
+        type: object
+        properties:
+          source_page:
+            type: string
+          source_visual_id:
+            type: string
+          target_page:
+            type: string
+          target_visual_ids:
+            type: array
+            items:
+              type: string
+          filter_type:
+            type: string
+          description:
+            type: string
+        required:
+        - source_page
+        - target_page
+        - filter_type
+        - description
+  required:
+  - pages

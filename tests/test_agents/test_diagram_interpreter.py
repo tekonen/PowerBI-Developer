@@ -41,7 +41,7 @@ MOCK_INTERPRETATION = {
 class TestDiagramInterpreterAgent:
     def test_interpret_calls_structured(self):
         agent = DiagramInterpreterAgent.__new__(DiagramInterpreterAgent)
-        agent.client = MagicMock()
+        agent.llm = MagicMock()
         agent.model = "test-model"
         agent.max_tokens = 4096
         agent._total_input_tokens = 0
@@ -64,7 +64,7 @@ class TestDiagramInterpreterAgent:
 
     def test_interpret_without_raster(self):
         agent = DiagramInterpreterAgent.__new__(DiagramInterpreterAgent)
-        agent.client = MagicMock()
+        agent.llm = MagicMock()
         agent.model = "test-model"
         agent.max_tokens = 4096
         agent._total_input_tokens = 0
@@ -80,7 +80,7 @@ class TestDiagramInterpreterAgent:
 
     def test_interpret_without_labels(self):
         agent = DiagramInterpreterAgent.__new__(DiagramInterpreterAgent)
-        agent.client = MagicMock()
+        agent.llm = MagicMock()
         agent.model = "test-model"
         agent.max_tokens = 4096
         agent._total_input_tokens = 0
@@ -93,4 +93,7 @@ class TestDiagramInterpreterAgent:
 
     def test_agent_class_attributes(self):
         assert DiagramInterpreterAgent.agent_name == "diagram_interpreter"
-        assert "data model" in DiagramInterpreterAgent.system_prompt.lower()
+        # system_prompt is now set in __init__ via registry; check via constant
+        from pbi_developer.agents.diagram_interpreter import INTERPRETER_SYSTEM_PROMPT
+
+        assert "data model" in INTERPRETER_SYSTEM_PROMPT.lower()

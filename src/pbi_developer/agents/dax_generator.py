@@ -69,8 +69,16 @@ DAX_OUTPUT_SCHEMA: dict[str, Any] = {
 class DaxGeneratorAgent(BaseAgent):
     """Generates DAX measures from metric definitions."""
 
-    system_prompt = DAX_GENERATOR_SYSTEM_PROMPT
     agent_name = "dax_generator"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from pbi_developer.prompts import registry
+
+        if registry.has("dax_generator"):
+            self.system_prompt = registry.get("dax_generator").system_prompt
+        else:
+            self.system_prompt = DAX_GENERATOR_SYSTEM_PROMPT
 
     def generate_measures(
         self,

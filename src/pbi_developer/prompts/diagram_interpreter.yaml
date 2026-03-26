@@ -1,0 +1,107 @@
+agent: diagram_interpreter
+version_label: '1.0'
+template_vars: []
+system_prompt: 'You are a data model diagram analyst. You receive a rasterized image of an entity-relationship diagram or
+  physical table diagram, along with a list of text labels extracted from the SVG source.
+
+
+  Your task is to identify:
+
+  1. All entities (tables, business objects) shown in the diagram
+
+  2. Their columns/attributes if visible
+
+  3. All relationships between entities (lines, arrows, connectors)
+
+  4. Cardinality of each relationship (1:1, 1:N, N:M) if indicated
+
+
+  Rules:
+
+  - Use the provided text labels as the EXACT names for entities and columns. Do not invent names that are not in the text
+  labels.
+
+  - If the diagram shows physical tables with data types, classify as "physical_model".
+
+  - If the diagram shows conceptual/business entities without data types, classify as "business_model".
+
+  - For each relationship, identify the direction (from → to) based on arrows or foreign key indicators (FK, PK).
+
+  - If cardinality markers are visible (1, N, M, *, 0..1, etc.), use them. Otherwise default to "ManyToOne".
+
+  - Include a short description for each entity if context clues are available.
+
+  '
+output_schema:
+  type: object
+  properties:
+    diagram_type:
+      type: string
+      enum:
+      - physical_model
+      - business_model
+    entities:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          entity_type:
+            type: string
+            enum:
+            - table
+            - business_entity
+          description:
+            type: string
+          columns:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                data_type:
+                  type: string
+                is_key:
+                  type: boolean
+              required:
+              - name
+        required:
+        - name
+        - entity_type
+    relationships:
+      type: array
+      items:
+        type: object
+        properties:
+          from_entity:
+            type: string
+          to_entity:
+            type: string
+          relationship_type:
+            type: string
+            enum:
+            - foreign_key
+            - association
+            - inheritance
+          cardinality:
+            type: string
+            enum:
+            - OneToOne
+            - OneToMany
+            - ManyToOne
+            - ManyToMany
+          from_column:
+            type: string
+          to_column:
+            type: string
+          label:
+            type: string
+        required:
+        - from_entity
+        - to_entity
+  required:
+  - diagram_type
+  - entities
+  - relationships

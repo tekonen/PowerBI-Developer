@@ -137,14 +137,20 @@ class WireframeAgent(BaseAgent):
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
+        from pbi_developer.prompts import registry
+
         standards = settings.report_standards
         page = settings.pbir
-        self.system_prompt = WIREFRAME_SYSTEM_PROMPT.format(
-            page_width=page.default_page_width,
-            page_height=page.default_page_height,
-            margin=standards.page_structure.get("margin", 20),
-            max_visuals=standards.page_structure.get("max_visuals_per_page", 8),
-        )
+        template_kwargs = {
+            "page_width": page.default_page_width,
+            "page_height": page.default_page_height,
+            "margin": standards.page_structure.get("margin", 20),
+            "max_visuals": standards.page_structure.get("max_visuals_per_page", 8),
+        }
+        if registry.has("wireframe"):
+            self.system_prompt = registry.get_rendered("wireframe", **template_kwargs)
+        else:
+            self.system_prompt = WIREFRAME_SYSTEM_PROMPT.format(**template_kwargs)
 
     def design(
         self,

@@ -1,0 +1,83 @@
+agent: planner
+version_label: '1.0'
+template_vars: []
+system_prompt: "You are a Power BI report planning specialist. Your job is to analyze dashboard\nrequirements and produce\
+  \ a structured report specification.\n\nYou will receive one or more of:\n- A text brief describing what the dashboard should\
+  \ show\n- User questions the dashboard must answer\n- Interview transcripts from stakeholders\n- Visual descriptions of\
+  \ PowerPoint mockups or screen recordings\n\nFrom these inputs, produce a structured plan that includes:\n1. Report title\
+  \ and target audience\n2. Pages with their purpose and the questions each page answers\n3. For each page, the suggested\
+  \ visual types with their data intent\n4. KPIs that should be prominently displayed\n5. Analytical questions the report\
+  \ must answer\n6. Any constraints mentioned in the requirements\n\nGuidelines:\n- Prefer simple, proven visual types: cards\
+  \ for KPIs, bar charts for comparisons,\n  line charts for trends, tables for detail, slicers for filtering\n- Limit to\
+  \ 6-8 visuals per page for readability\n- Group related metrics on the same page\n- Always include at least one slicer page\
+  \ or filter panel\n- Flag any ambiguities in the requirements as constraints\n"
+output_schema:
+  type: object
+  properties:
+    report_title:
+      type: string
+    audience:
+      type: string
+    pages:
+      type: array
+      items:
+        type: object
+        properties:
+          page_name:
+            type: string
+          purpose:
+            type: string
+          questions_answered:
+            type: array
+            items:
+              type: string
+          suggested_visuals:
+            type: array
+            items:
+              type: object
+              properties:
+                visual_type:
+                  type: string
+                description:
+                  type: string
+                data_intent:
+                  type: string
+                position_hint:
+                  type: string
+              required:
+              - visual_type
+              - description
+              - data_intent
+          suggested_filters:
+            type: array
+            items:
+              type: string
+        required:
+        - page_name
+        - purpose
+        - suggested_visuals
+    kpis:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          description:
+            type: string
+        required:
+        - name
+        - description
+    analytical_questions:
+      type: array
+      items:
+        type: string
+    constraints:
+      type: array
+      items:
+        type: string
+  required:
+  - report_title
+  - pages
+  - kpis
+  - analytical_questions

@@ -48,6 +48,10 @@ class StageResult:
     data: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
     token_usage: dict[str, int] = field(default_factory=dict)
+    latency_ms: float = 0.0
+    cost_usd: float = 0.0
+    call_count: int = 0
+    retry_count: int = 0
 
     @property
     def success(self) -> bool:
@@ -92,3 +96,11 @@ class PipelineState:
         total_in = sum(s.token_usage.get("input_tokens", 0) for s in self.stages.values())
         total_out = sum(s.token_usage.get("output_tokens", 0) for s in self.stages.values())
         return {"input_tokens": total_in, "output_tokens": total_out}
+
+    @property
+    def total_cost(self) -> float:
+        return sum(s.cost_usd for s in self.stages.values())
+
+    @property
+    def total_latency_ms(self) -> float:
+        return sum(s.latency_ms for s in self.stages.values())

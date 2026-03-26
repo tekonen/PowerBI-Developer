@@ -105,8 +105,16 @@ FIELD_MAPPED_WIREFRAME_SCHEMA: dict[str, Any] = {
 class FieldMapperAgent(BaseAgent):
     """Maps semantic model fields to wireframe visuals."""
 
-    system_prompt = FIELD_MAPPER_SYSTEM_PROMPT
     agent_name = "field_mapper"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from pbi_developer.prompts import registry
+
+        if registry.has("field_mapper"):
+            self.system_prompt = registry.get("field_mapper").system_prompt
+        else:
+            self.system_prompt = FIELD_MAPPER_SYSTEM_PROMPT
 
     def map_fields(
         self,

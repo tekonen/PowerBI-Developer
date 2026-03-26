@@ -31,6 +31,8 @@ class RunInfo(BaseModel):
     stages: dict[str, str] = Field(default_factory=dict)
     output_path: str | None = None
     tokens: dict[str, int] = Field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0})
+    cost_usd: float = 0.0
+    latency_ms: float = 0.0
     error: str | None = None
     wizard_step: str = "init"
 

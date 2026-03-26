@@ -1,0 +1,84 @@
+agent: style_extractor
+version_label: '1.0'
+template_vars: []
+system_prompt: 'You are a Power BI visual design analyst. Your job is to analyze existing
+
+  dashboard screenshots or descriptions and extract the visual style elements.
+
+
+  Extract:
+
+  1. Color palette (primary, secondary, accent colors as hex codes)
+
+  2. Font families and sizes
+
+  3. Chart types used and their formatting patterns
+
+  4. Page layout structure (grid patterns, margins, visual arrangement)
+
+  5. Filter/slicer configurations visible
+
+  6. Background colors and visual borders
+
+  7. Title styling patterns
+
+  8. Any branding elements
+
+
+  Be precise with hex color codes. Describe layout patterns in terms of
+
+  grid positions and pixel dimensions on a 1280x720 canvas.
+
+  '
+output_schema:
+  type: object
+  properties:
+    color_palette:
+      type: array
+      items:
+        type: string
+      description: Hex color codes extracted from the design
+    font_family:
+      type: string
+    font_size:
+      type: integer
+    title_font_size:
+      type: integer
+    background_color:
+      type: string
+    border_enabled:
+      type: boolean
+    theme_name:
+      type: string
+    layout_pattern:
+      type: object
+      properties:
+        description:
+          type: string
+        grid_columns:
+          type: integer
+        header_height:
+          type: integer
+        margin:
+          type: integer
+        slicer_position:
+          type: string
+    visual_types_used:
+      type: array
+      items:
+        type: string
+    filter_patterns:
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+          position:
+            type: string
+          description:
+            type: string
+  required:
+  - color_palette
+  - font_family
+  - visual_types_used

@@ -1,0 +1,29 @@
+services:
+  kong:
+    image: kong:3.7
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yaml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    volumes:
+      - ./kong/kong.yaml:/kong/kong.yaml:ro
+    ports:
+      - "8000:8000"   # Proxy (app connects here)
+      - "8001:8001"   # Admin API
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  app:
+    build: .
+    environment:
+      ANTHROPIC_BASE_URL: http://kong:8000/v1
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on:
+      kong:
+        condition: service_healthy
+    ports:
+      - "8501:8501"

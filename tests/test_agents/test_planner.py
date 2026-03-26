@@ -15,12 +15,13 @@ from pbi_developer.agents.planner import (
 
 @pytest.fixture
 def planner(monkeypatch):
-    """Create a PlannerAgent with mocked Anthropic client."""
+    """Create a PlannerAgent with mocked LangChain LLM."""
     monkeypatch.setattr("pbi_developer.agents.base.settings.claude.api_key", "fake-key")
     monkeypatch.setattr("pbi_developer.agents.base.settings.claude.model", "claude-sonnet-4-20250514")
     monkeypatch.setattr("pbi_developer.agents.base.settings.claude.max_tokens", 4096)
     monkeypatch.setattr("pbi_developer.agents.base.settings.claude.temperature", 0.2)
-    with patch("pbi_developer.agents.base.anthropic.Anthropic"):
+    monkeypatch.setattr("pbi_developer.agents.base.settings.claude.base_url", "")
+    with patch("pbi_developer.agents.base.ChatAnthropic"):
         agent = PlannerAgent()
         yield agent
 

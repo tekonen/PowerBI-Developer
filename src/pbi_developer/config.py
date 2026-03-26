@@ -90,6 +90,14 @@ class ReportStandards(BaseModel):
     )
 
 
+class ObservabilityConfig(BaseModel):
+    """AI call observability settings."""
+
+    enabled: bool = True
+    capture_prompts: bool = False  # off by default for privacy
+    log_to_file: bool = True  # write call_log.json alongside artifacts
+
+
 class Settings(BaseModel):
     claude: ClaudeConfig = Field(default_factory=ClaudeConfig)
     powerbi: PowerBIConfig = Field(default_factory=PowerBIConfig)
@@ -97,6 +105,7 @@ class Settings(BaseModel):
     pbir: PBIRConfig = Field(default_factory=PBIRConfig)
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
     report_standards: ReportStandards = Field(default_factory=ReportStandards)
+    observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
 
 
 def load_settings(settings_path: Path | None = None) -> Settings:

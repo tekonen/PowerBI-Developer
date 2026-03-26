@@ -120,13 +120,19 @@ class QAAgent(BaseAgent):
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
+        from pbi_developer.prompts import registry
+
         standards = settings.report_standards
         page = settings.pbir
-        self.system_prompt = QA_SYSTEM_PROMPT.format(
-            max_visuals=standards.page_structure.get("max_visuals_per_page", 8),
-            page_width=page.default_page_width,
-            page_height=page.default_page_height,
-        )
+        template_kwargs = {
+            "max_visuals": standards.page_structure.get("max_visuals_per_page", 8),
+            "page_width": page.default_page_width,
+            "page_height": page.default_page_height,
+        }
+        if registry.has("qa"):
+            self.system_prompt = registry.get_rendered("qa", **template_kwargs)
+        else:
+            self.system_prompt = QA_SYSTEM_PROMPT.format(**template_kwargs)
 
     def validate(
         self,
