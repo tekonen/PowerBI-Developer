@@ -34,9 +34,7 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     """Estimate cost in USD for an LLM call based on model pricing."""
     pricing = MODEL_PRICING.get(model, MODEL_PRICING["default"])
-    return (
-        input_tokens * pricing["input_per_mtok"] + output_tokens * pricing["output_per_mtok"]
-    ) / 1_000_000
+    return (input_tokens * pricing["input_per_mtok"] + output_tokens * pricing["output_per_mtok"]) / 1_000_000
 
 
 # ---------------------------------------------------------------------------
