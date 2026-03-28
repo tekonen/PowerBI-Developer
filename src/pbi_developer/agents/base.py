@@ -232,9 +232,7 @@ class BaseAgent:
             system_prompt=self.system_prompt if settings.observability.capture_prompts else None,
             user_prompt=prompt if settings.observability.capture_prompts else None,
             response_text=(
-                json.dumps(result)
-                if settings.observability.capture_prompts and isinstance(result, dict)
-                else None
+                json.dumps(result) if settings.observability.capture_prompts and isinstance(result, dict) else None
             ),
         )
         self._call_log.record(record)

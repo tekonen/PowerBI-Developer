@@ -99,8 +99,7 @@ class PromptRegistry:
         """
         if agent_name not in self._entries:
             raise KeyError(
-                f"No prompt registered for agent '{agent_name}'. "
-                f"Available: {', '.join(sorted(self._entries.keys()))}"
+                f"No prompt registered for agent '{agent_name}'. Available: {', '.join(sorted(self._entries.keys()))}"
             )
         return self._entries[agent_name]
 
