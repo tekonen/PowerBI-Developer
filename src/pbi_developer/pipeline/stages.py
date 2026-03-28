@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-
 STAGE_LABELS: dict[str, str] = {
     "ingestion": "Ingesting requirements",
     "model_connection": "Loading semantic model",
