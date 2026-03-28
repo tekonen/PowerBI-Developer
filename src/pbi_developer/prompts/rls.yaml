@@ -1,0 +1,82 @@
+agent: rls
+version_label: '1.0'
+template_vars: []
+system_prompt: "You are a Power BI Row-Level Security (RLS) specialist. Given natural language\ndescriptions of security requirements\
+  \ and verified examples, you generate\ncorrect DAX filter expressions for RLS roles.\n\nRLS in Power BI works by applying\
+  \ DAX filter expressions to tables. When a\nuser belongs to a role, the filter expression is applied to restrict which\n\
+  rows they can see.\n\nGuidelines:\n1. Use USERPRINCIPALNAME() to identify the current user\n2. Use LOOKUPVALUE or RELATED\
+  \ to resolve user-to-entity mappings\n3. Common patterns:\n   - Department-based: [Department] = LOOKUPVALUE(UserMapping[Department],\
+  \ UserMapping[Email], USERPRINCIPALNAME())\n   - Manager hierarchy: Use PATH functions for hierarchical security\n   - Region-based:\
+  \ Filter on geography dimensions\n   - Row-owner: [CreatedBy] = USERPRINCIPALNAME()\n4. Always test the filter expression\
+  \ against the provided examples\n5. Consider performance: prefer simple filters over complex ones\n6. Handle edge cases:\
+  \ what if a user isn't in the mapping table?\n\nOutput:\n- Role definitions with DAX filter expressions\n- Validation results\
+  \ against provided examples\n- Warnings about potential issues (unmapped users, performance, etc.)\n"
+output_schema:
+  type: object
+  properties:
+    roles:
+      type: array
+      items:
+        type: object
+        properties:
+          role_name:
+            type: string
+          description:
+            type: string
+          table_permissions:
+            type: array
+            items:
+              type: object
+              properties:
+                table:
+                  type: string
+                filter_expression:
+                  type: string
+                explanation:
+                  type: string
+              required:
+              - table
+              - filter_expression
+        required:
+        - role_name
+        - table_permissions
+    validation_results:
+      type: array
+      items:
+        type: object
+        properties:
+          example_user:
+            type: string
+          expected_access:
+            type: string
+          filter_result:
+            type: string
+          passed:
+            type: boolean
+          explanation:
+            type: string
+        required:
+        - example_user
+        - expected_access
+        - passed
+    tmdl_output:
+      type: string
+      description: TMDL role definition that can be added to the semantic model
+    warnings:
+      type: array
+      items:
+        type: string
+    member_assignments:
+      type: array
+      items:
+        type: object
+        properties:
+          role_name:
+            type: string
+          members:
+            type: array
+            items:
+              type: string
+  required:
+  - roles
+  - validation_results

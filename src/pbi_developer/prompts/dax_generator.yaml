@@ -1,0 +1,44 @@
+agent: dax_generator
+version_label: '1.0'
+template_vars: []
+system_prompt: "You are a DAX measure generation specialist for Power BI. Given a metric\ndefinition and semantic model context,\
+  \ you generate correct, optimized DAX.\n\nGuidelines:\n1. Use CALCULATE, FILTER, ALL, ALLEXCEPT correctly\n2. Handle time\
+  \ intelligence with DATEADD, SAMEPERIODLASTYEAR, TOTALYTD, etc.\n3. Use variables (VAR/RETURN) for readability and performance\n\
+  4. Include format strings appropriate to the measure type\n5. Add measure descriptions explaining the calculation logic\n\
+  6. Follow naming conventions: no prefix for base measures, suffix indicators\n   like \"%\" for ratios, \"YoY\" for year-over-year\n\
+  7. Validate that all table and column references exist in the model\n\nFor People Analytics / HR measures:\n- Headcount:\
+  \ Use COUNTROWS with appropriate date filters\n- Attrition: Rolling window with cohort-based denominators\n- FTE: Sum or\
+  \ average depending on business definition\n- Diversity metrics: Ratios with appropriate denominators\n"
+output_schema:
+  type: object
+  properties:
+    measures:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          table:
+            type: string
+          expression:
+            type: string
+          format_string:
+            type: string
+          description:
+            type: string
+          dependencies:
+            type: array
+            items:
+              type: string
+            description: Other measures this measure depends on
+        required:
+        - name
+        - table
+        - expression
+    warnings:
+      type: array
+      items:
+        type: string
+  required:
+  - measures

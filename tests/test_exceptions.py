@@ -12,7 +12,7 @@ from pbi_developer.exceptions import (
     ValidationError,
 )
 from pbi_developer.exceptions import (
-    ConnectionError as PBIConnectionError,
+    ConnectorError as PBIConnectionError,
 )
 
 # ---------------------------------------------------------------------------

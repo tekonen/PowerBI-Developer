@@ -82,8 +82,16 @@ STYLE_SCHEMA: dict[str, Any] = {
 class StyleExtractorAgent(BaseAgent):
     """Extracts visual style from dashboard images or descriptions."""
 
-    system_prompt = STYLE_EXTRACTOR_SYSTEM_PROMPT
     agent_name = "style_extractor"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from pbi_developer.prompts import registry
+
+        if registry.has("style_extractor"):
+            self.system_prompt = registry.get("style_extractor").system_prompt
+        else:
+            self.system_prompt = STYLE_EXTRACTOR_SYSTEM_PROMPT
 
     def extract_from_images(self, images: list[Path | bytes]) -> dict[str, Any]:
         """Extract style from dashboard screenshot images.

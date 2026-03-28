@@ -12,6 +12,8 @@ license = {text = "MIT"}
 
 dependencies = [
     "anthropic>=0.40.0",
+    "langchain-core>=0.3",
+    "langchain-anthropic>=0.3",
     "typer[all]>=0.12.0",
     "pydantic>=2.0",
     "python-pptx>=1.0",
@@ -36,6 +38,9 @@ dependencies = [
 deploy = [
     "fabric-cicd>=0.2",
 ]
+tracing = [
+    "langsmith>=0.2",
+]
 dev = [
     "pytest>=8.0",
     "pytest-mock>=3.12",
@@ -50,6 +55,9 @@ pbi-dev = "pbi_developer.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"pbi_developer.prompts" = ["*.yaml"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"
@@ -60,6 +68,8 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 [tool.ruff.lint.per-file-ignores]
 "src/pbi_developer/cli.py" = ["B008"]  # typer.Option/Argument in defaults is standard Typer pattern
 "src/pbi_developer/web/app.py" = ["B008"]  # FastAPI File/Form defaults are standard pattern
+"src/pbi_developer/web/routes/api.py" = ["B008"]
+"src/pbi_developer/web/routes/wizard.py" = ["B008"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["pbi_developer"]

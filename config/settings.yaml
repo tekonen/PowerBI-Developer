@@ -40,3 +40,8 @@ report_standards:
   naming_rules:
     measures_prefix: ""
     page_naming: descriptive
+
+observability:
+  enabled: true
+  capture_prompts: false  # Set true to log full prompts/responses (privacy implications)
+  log_to_file: true       # Write call_log.json alongside pipeline artifacts

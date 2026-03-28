@@ -1,0 +1,49 @@
+_format_version: "3.0"
+
+services:
+  - name: anthropic-api
+    url: https://api.anthropic.com
+    protocol: https
+    port: 443
+    connect_timeout: 60000
+    write_timeout: 120000
+    read_timeout: 300000  # 5 minutes — long timeout for LLM responses
+    retries: 2
+    routes:
+      - name: anthropic-route
+        paths:
+          - /v1
+        strip_path: false
+        protocols:
+          - http
+          - https
+
+plugins:
+  # Rate limiting — prevent runaway costs
+  - name: rate-limiting
+    service: anthropic-api
+    config:
+      minute: 60
+      hour: 1000
+      policy: local
+      fault_tolerant: true
+      hide_client_headers: false
+
+  # Prometheus metrics — latency, status codes, bandwidth
+  - name: prometheus
+    service: anthropic-api
+    config:
+      per_consumer: false
+      status_code_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+
+  # Request/response logging (configure http_endpoint for your logging service)
+  # - name: http-log
+  #   service: anthropic-api
+  #   config:
+  #     http_endpoint: http://logging-service:8080/logs
+  #     method: POST
+  #     content_type: application/json
+  #     flush_timeout: 2
+  #     retry_count: 3

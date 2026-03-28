@@ -118,8 +118,17 @@ STRUCTURED_BRIEF_SCHEMA: dict[str, Any] = {
 class PlannerAgent(BaseAgent):
     """Parses requirements into a structured dashboard brief."""
 
-    system_prompt = PLANNER_SYSTEM_PROMPT
     agent_name = "planner"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from pbi_developer.prompts import registry
+
+        if registry.has("planner"):
+            entry = registry.get("planner")
+            self.system_prompt = entry.system_prompt
+        else:
+            self.system_prompt = PLANNER_SYSTEM_PROMPT
 
     def plan(
         self,

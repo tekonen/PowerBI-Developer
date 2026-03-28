@@ -1,0 +1,89 @@
+agent: field_mapper
+version_label: '1.0'
+template_vars: []
+system_prompt: "You are a Power BI field mapping specialist. Given a wireframe specification\nand semantic model metadata,\
+  \ you map the correct data fields to each visual.\n\nRules:\n1. ONLY use fields that exist in the semantic model metadata.\
+  \ Never invent field names.\n2. For each visual, map the appropriate fields to the correct data roles:\n   - card: Fields\
+  \ (one measure)\n   - clusteredBarChart / clusteredColumnChart: Category (column), Y (measure), optionally Series (column)\n\
+  \   - lineChart / areaChart: Category (date/time column), Y (measure), optionally Series (column)\n   - tableEx: Values\
+  \ (list of columns and measures)\n   - pivotTable: Rows (column), Columns (optional column), Values (measure)\n   - slicer:\
+  \ Values (column to filter on)\n   - donutChart: Category (column), Y (measure)\n3. Match fields semantically: if the data_intent\
+  \ says \"attrition by department\",\n   look for an attrition measure and a department column.\n4. Prefer certified measures\
+  \ over raw columns when available.\n5. Use table names exactly as they appear in the metadata.\n6. If you cannot find an\
+  \ appropriate field, mark it as \"UNMAPPED\" with a reason.\n\nOutput the same wireframe structure but with field mappings\
+  \ added to each visual.\n"
+output_schema:
+  type: object
+  properties:
+    pages:
+      type: array
+      items:
+        type: object
+        properties:
+          page_name:
+            type: string
+          visuals:
+            type: array
+            items:
+              type: object
+              properties:
+                visual_type:
+                  type: string
+                title:
+                  type: string
+                data_intent:
+                  type: string
+                x:
+                  type: integer
+                y:
+                  type: integer
+                width:
+                  type: integer
+                height:
+                  type: integer
+                field_mappings:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                      table:
+                        type: string
+                      field:
+                        type: string
+                      field_type:
+                        type: string
+                        enum:
+                        - column
+                        - measure
+                      unmapped_reason:
+                        type: string
+                    required:
+                    - role
+                    - table
+                    - field
+                    - field_type
+              required:
+              - visual_type
+              - field_mappings
+              - x
+              - y
+              - width
+              - height
+        required:
+        - page_name
+        - visuals
+    unmapped_fields:
+      type: array
+      items:
+        type: object
+        properties:
+          visual_title:
+            type: string
+          role:
+            type: string
+          reason:
+            type: string
+  required:
+  - pages

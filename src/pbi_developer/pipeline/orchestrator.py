@@ -119,42 +119,7 @@ def run_pipeline(
         logger.info("Step 4 complete: Fields mapped")
 
         # Step 5: QA Validation (with retry loop)
-        state.set_running("qa")
-        _notify("qa", "running")
-        from pbi_developer.agents.qa import QAAgent
-
-        qa_agent = QAAgent()
-        max_retries = settings.pipeline.max_qa_retries
-
-        for attempt in range(max_retries + 1):
-            qa_result = qa_agent.validate(field_mapped, model_metadata)
-            if qa_result.passed:
-                break
-            if attempt < max_retries:
-                logger.warning(f"QA failed (attempt {attempt + 1}/{max_retries + 1}), retrying field mapping...")
-                field_mapped = mapper.map_fields(wireframe, model_metadata)
-            else:
-                logger.error("QA failed after max retries")
-                state.set_failed("qa", qa_result.summary)
-                return PipelineResult(
-                    success=False,
-                    error=f"QA validation failed: {qa_result.summary}",
-                    state=state,
-                )
-
-        state.set_completed(
-            "qa",
-            {
-                "qa_issues": [
-                    {"severity": i.severity, "visual_id": i.visual_id, "description": i.description}
-                    for i in qa_result.issues
-                ]
-            },
-            qa_agent.token_usage,
-        )
-        _save_artifact(output_dir, "field_mapped", field_mapped)
-        _notify("qa", "completed")
-        logger.info("Step 5 complete: QA passed")
+        field_mapped = _run_qa(field_mapped, model_metadata, wireframe, output_dir, state, _notify)
 
         # Step 6: PBIR Conversion
         state.set_running("pbir_generation")
@@ -837,8 +802,6 @@ def run_step_dax(
 
 def run_step_qa(*, output_dir: Path) -> dict[str, Any]:
     """Run QA validation from saved artifacts."""
-    from pbi_developer.agents.field_mapper import FieldMapperAgent
-    from pbi_developer.agents.qa import QAAgent
     from pbi_developer.utils.files import read_json
 
     output_dir = Path(output_dir)
@@ -849,29 +812,22 @@ def run_step_qa(*, output_dir: Path) -> dict[str, Any]:
     model_metadata_path = artifacts / "model_metadata.md"
     model_metadata = model_metadata_path.read_text(encoding="utf-8") if model_metadata_path.exists() else ""
 
-    qa_agent = QAAgent()
-    max_retries = settings.pipeline.max_qa_retries
+    state = PipelineState()
 
-    for attempt in range(max_retries + 1):
-        qa_result = qa_agent.validate(field_mapped, model_metadata)
-        if qa_result.passed:
-            break
-        if attempt < max_retries:
-            logger.warning(f"QA failed (attempt {attempt + 1}/{max_retries + 1}), retrying field mapping...")
-            mapper = FieldMapperAgent()
-            field_mapped = mapper.map_fields(wireframe, model_metadata)
-        else:
-            logger.error("QA failed after max retries")
+    def _noop(stage: str, status: str) -> None:
+        pass
 
-    _save_artifact(output_dir, "field_mapped", field_mapped)
-    result = {
-        "passed": qa_result.passed,
-        "summary": qa_result.summary,
-        "issues": [
-            {"severity": i.severity, "visual_id": i.visual_id, "description": i.description} for i in qa_result.issues
-        ],
-    }
-    logger.info(f"Wizard step: QA {'passed' if qa_result.passed else 'failed'}")
+    try:
+        field_mapped = _run_qa(field_mapped, model_metadata, wireframe, output_dir, state, _noop)
+        qa_stage = state.stages.get("qa")
+        issues = qa_stage.data.get("qa_issues", []) if qa_stage else []
+        result = {"passed": True, "summary": "All checks passed", "issues": issues}
+    except RuntimeError as e:
+        qa_stage = state.stages.get("qa")
+        issues = qa_stage.data.get("qa_issues", []) if qa_stage else []
+        result = {"passed": False, "summary": str(e), "issues": issues}
+
+    logger.info(f"Wizard step: QA {'passed' if result['passed'] else 'failed'}")
     return result
 
 
