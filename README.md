@@ -53,6 +53,12 @@ The tool runs an 8-step multi-agent pipeline. Each step uses a specialist Claude
 pip install -e ".[dev]"
 ```
 
+For Supabase support (authentication, multi-user, PostgreSQL storage):
+
+```bash
+pip install -e ".[supabase]"
+```
+
 ### 2. Configure
 
 Copy `.env.example` to `.env` and set your API key:
@@ -271,6 +277,10 @@ Deployment methods:
 | `SNOWFLAKE_WAREHOUSE` | For Snowflake | Snowflake warehouse |
 | `SNOWFLAKE_DATABASE` | For Snowflake | Snowflake database |
 | `SNOWFLAKE_SCHEMA` | For Snowflake | Snowflake schema |
+| `SUPABASE_URL` | For Supabase | Supabase project URL |
+| `SUPABASE_ANON_KEY` | For Supabase | Supabase anonymous (public) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | For Supabase | Supabase service role key (server-side only) |
+| `SUPABASE_ENCRYPTION_KEY` | For Supabase | 32-byte key for encrypting user settings at rest |
 | `PORT` | For Railway | Server port (default: 8501) |
 
 ### Settings (`config/settings.yaml`)
@@ -307,6 +317,9 @@ Open `http://localhost:8501`. The GUI provides:
 | **Deploy** | Deploy completed reports to Power BI Service |
 | **Versions** | Git-backed version history with undo/redo and Bitbucket push |
 | **Settings** | View configuration (masked secrets, API endpoint), test connections |
+| **Login** | Email/password login and OAuth (Google, Apple). Supabase mode only. |
+| **Onboarding** | 4-step setup wizard for new users (API key, Power BI, Snowflake, report style) |
+| **Admin** | User management, run monitoring, system prompt editing, global config |
 
 The Generate wizard lets you:
 - **Browse Power BI datasets** interactively and preview metadata (tables, columns, measures, relationships) before selecting a semantic model
@@ -316,6 +329,62 @@ The Generate wizard lets you:
 - **Accept & version-control** each step with git-backed undo/redo
 
 Pipeline progress for the full-pipeline mode is streamed in real-time via Server-Sent Events.
+
+## Supabase Integration
+
+The app supports two operating modes:
+
+- **Local mode** (default) — Run history stored as JSON files, no authentication. Suitable for single-user development and CLI usage.
+- **Supabase mode** — PostgreSQL-backed storage via [Supabase](https://supabase.com), with authentication, multi-user support, and encrypted user settings.
+
+To enable Supabase mode, set the four `SUPABASE_*` environment variables in `.env`.
+
+### Setting Up Supabase
+
+1. Create a Supabase project at [supabase.com](https://supabase.com)
+2. Run the database schema: apply `supabase/schema.sql` in the Supabase SQL editor
+3. Copy your project URL and keys from Settings > API
+4. Add to `.env`:
+
+```
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+SUPABASE_ENCRYPTION_KEY=your-32-byte-hex-key
+```
+
+See `supabase/schema.sql` for the full database schema including tables for users, runs, and settings.
+
+### Authentication
+
+When running in Supabase mode, the app requires authentication:
+
+- **Email/password** registration and login
+- **OAuth** via Google and Apple (configure providers in Supabase dashboard)
+- JWT tokens are stored in HTTP-only cookies and validated by middleware on each request
+- In local mode, authentication is disabled — all requests are treated as a single default user
+
+### Onboarding Wizard
+
+New users in Supabase mode are redirected to a 4-step setup wizard on first login:
+
+1. **Claude API key** — required to run the pipeline
+2. **Power BI credentials** — Azure tenant, client ID, secret, workspace (skippable)
+3. **Snowflake credentials** — account, user, password, warehouse, database, schema (skippable)
+4. **Report style** — default color palette, font, layout preferences (skippable)
+
+User settings are encrypted at rest using the `SUPABASE_ENCRYPTION_KEY`.
+
+### Admin Page
+
+Users with admin privileges can manage the deployment from `/admin`:
+
+- **User management** — view, disable, or delete user accounts
+- **Run monitoring** — inspect run history and status across all users
+- **System prompt editing** — modify agent system prompts without redeploying
+- **Global configuration** — update shared settings (model selection, QA limits, defaults)
+
+To grant admin access, set `is_admin = true` in the `user_settings` table for the target user.
 
 ## Knowledge Graph
 
@@ -427,10 +496,20 @@ src/pbi_developer/
 │   └── pipeline_manager.py  # Dev/test/prod promotion
 ├── web/             # Browser-based GUI
 │   ├── app.py           # FastAPI routes + SSE streaming
+│   ├── auth.py          # Authentication middleware (JWT validation, cookie handling)
 │   ├── models.py        # Request/response schemas
-│   ├── run_store.py     # Run history persistence
+│   ├── run_store.py     # Run history persistence (local JSON)
+│   ├── supabase_client.py   # Supabase client singleton
+│   ├── supabase_run_store.py # Supabase-backed run storage
+│   ├── store_factory.py     # Store backend factory (local vs Supabase)
+│   ├── user_settings_service.py # Per-user settings CRUD (encrypted)
+│   ├── admin_service.py     # Admin operations (user mgmt, config, monitoring)
 │   ├── sse.py           # Server-Sent Events bridge
 │   ├── version_control.py # Git-backed undo/redo + Bitbucket push
+│   ├── routes/
+│   │   ├── auth_routes.py   # Login, register, logout endpoints
+│   │   ├── onboarding.py    # Onboarding wizard API
+│   │   └── admin.py         # Admin API endpoints
 │   ├── templates/       # Jinja2 HTML templates (wizard steps, review partials)
 │   └── static/          # CSS + JavaScript (app.js, wizard.js, wireframe-mockup.js)
 ├── knowledge_graph.py  # Persistent knowledge graph (networkx + JSON)

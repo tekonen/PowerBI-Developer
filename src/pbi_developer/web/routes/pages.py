@@ -84,6 +84,7 @@ async def page_deploy(request: Request):
 @router.get("/settings")
 async def page_settings(request: Request):
     from pbi_developer.config import settings
+    from pbi_developer.web.auth import get_current_user_id
 
     config = {
         "claude_model": settings.claude.model,
@@ -95,6 +96,43 @@ async def page_settings(request: Request):
         "max_qa_retries": settings.pipeline.max_qa_retries,
         "require_human_review": settings.pipeline.require_human_review,
     }
+
+    # Load user-specific overrides if authenticated
+    user_config = None
+    user_id = get_current_user_id(request)
+    if user_id:
+        try:
+            from pbi_developer.web.supabase_client import is_supabase_configured
+
+            if is_supabase_configured():
+                from pbi_developer.web.user_settings_service import get_user_settings
+
+                raw = get_user_settings(user_id)
+                if raw:
+                    user_config = {
+                        "claude_model": raw.get("claude_model", ""),
+                        "claude_base_url": raw.get("claude_base_url", ""),
+                        "api_key_set": bool(raw.get("claude_api_key")),
+                        "pbi_workspace_id": raw.get("pbi_workspace_id", ""),
+                        "pbi_tenant_set": bool(raw.get("pbi_tenant_id")),
+                        "pbi_client_set": bool(raw.get("pbi_client_id")),
+                        "sf_account_set": bool(raw.get("sf_account")),
+                        "onboarding_completed": raw.get("onboarding_completed", False),
+                    }
+        except Exception:
+            pass  # Don't break settings page if user settings fail
+
     return _get_templates().TemplateResponse(
-        name="settings.html", request=request, context={"config": config, **_user_context(request)}
+        name="settings.html",
+        request=request,
+        context={"config": config, "user_config": user_config, **_user_context(request)},
+    )
+
+
+@router.get("/admin")
+async def page_admin(request: Request):
+    return _get_templates().TemplateResponse(
+        name="admin.html",
+        request=request,
+        context={**_user_context(request)},
     )

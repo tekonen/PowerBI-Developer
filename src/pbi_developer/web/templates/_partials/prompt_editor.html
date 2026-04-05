@@ -1,0 +1,18 @@
+<!-- System Prompts Editor Panel -->
+<div id="prompts-panel">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">System Prompts</h3>
+        <div class="text-xs text-gray-400" id="prompts-count">Loading...</div>
+    </div>
+
+    <div id="prompts-list" class="space-y-4">
+        <!-- Prompt cards rendered by JS -->
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='prompt-editor.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        loadPrompts();
+    });
+</script>
