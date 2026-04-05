@@ -20,9 +20,9 @@ def _client():
 
 
 def _encryption_key() -> str:
-    from pbi_developer.web.supabase_client import SUPABASE_ENCRYPTION_KEY
+    from pbi_developer.web.supabase_client import get_encryption_key
 
-    return SUPABASE_ENCRYPTION_KEY
+    return get_encryption_key()
 
 
 def _encrypt(value: str) -> str | None:

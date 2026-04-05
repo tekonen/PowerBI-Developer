@@ -98,6 +98,15 @@ class ObservabilityConfig(BaseModel):
     log_to_file: bool = True  # write call_log.json alongside artifacts
 
 
+class SupabaseConfig(BaseModel):
+    """Supabase connection settings. When url is empty, the app runs in local mode."""
+
+    url: str = Field(default_factory=lambda: os.environ.get("SUPABASE_URL", ""))
+    anon_key: str = Field(default_factory=lambda: os.environ.get("SUPABASE_ANON_KEY", ""))
+    service_role_key: str = Field(default_factory=lambda: os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""))
+    encryption_key: str = Field(default_factory=lambda: os.environ.get("SUPABASE_ENCRYPTION_KEY", ""))
+
+
 class Settings(BaseModel):
     claude: ClaudeConfig = Field(default_factory=ClaudeConfig)
     powerbi: PowerBIConfig = Field(default_factory=PowerBIConfig)
@@ -106,6 +115,7 @@ class Settings(BaseModel):
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
     report_standards: ReportStandards = Field(default_factory=ReportStandards)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+    supabase: SupabaseConfig = Field(default_factory=SupabaseConfig)
 
 
 def load_settings(settings_path: Path | None = None) -> Settings:
