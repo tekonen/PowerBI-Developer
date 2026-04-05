@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In — PBI Developer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="h-full flex items-center justify-center">
+    <div class="w-full max-w-md px-6">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">PBI Developer</h1>
+            <p class="text-gray-500 mt-2">AI-Powered Power BI Reports</p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <!-- Tab switcher -->
+            <div class="flex border-b mb-6">
+                <button id="tab-login" onclick="switchTab('login')"
+                        class="flex-1 pb-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600">
+                    Sign In
+                </button>
+                <button id="tab-register" onclick="switchTab('register')"
+                        class="flex-1 pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-600">
+                    Register
+                </button>
+            </div>
+
+            <!-- Error message -->
+            <div id="auth-error" class="hidden mb-4 bg-red-50 text-red-700 text-sm rounded-lg p-3"></div>
+            <div id="auth-success" class="hidden mb-4 bg-green-50 text-green-700 text-sm rounded-lg p-3"></div>
+
+            <!-- Email/Password form -->
+            <form id="auth-form" onsubmit="handleEmailAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="auth-email" required
+                           class="w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="you@company.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="auth-password" required minlength="6"
+                           class="w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Min 6 characters">
+                </div>
+                <button type="submit" id="auth-submit-btn"
+                        class="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors">
+                    Sign In
+                </button>
+            </form>
+
+            <!-- Divider -->
+            <div class="flex items-center my-6">
+                <div class="flex-1 border-t border-gray-200"></div>
+                <span class="px-3 text-xs text-gray-400 uppercase">or</span>
+                <div class="flex-1 border-t border-gray-200"></div>
+            </div>
+
+            <!-- OAuth buttons -->
+            <div class="space-y-3">
+                <button onclick="signInWithGoogle()"
+                        class="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continue with Google
+                </button>
+                <button onclick="signInWithApple()"
+                        class="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                    </svg>
+                    Continue with Apple
+                </button>
+            </div>
+        </div>
+
+        <p class="text-center text-xs text-gray-400 mt-6">pbi-dev v0.1.0</p>
+    </div>
+
+    <script>
+    // Initialize Supabase client from meta or inline config
+    const SUPABASE_URL = '{{ supabase_url | default("") }}';
+    const SUPABASE_ANON_KEY = '{{ supabase_anon_key | default("") }}';
+    let supabaseClient = null;
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && typeof supabase !== 'undefined') {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    let authMode = 'login';
+
+    function switchTab(mode) {
+        authMode = mode;
+        const loginTab = document.getElementById('tab-login');
+        const registerTab = document.getElementById('tab-register');
+        const submitBtn = document.getElementById('auth-submit-btn');
+
+        if (mode === 'login') {
+            loginTab.className = 'flex-1 pb-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600';
+            registerTab.className = 'flex-1 pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-600';
+            submitBtn.textContent = 'Sign In';
+        } else {
+            registerTab.className = 'flex-1 pb-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600';
+            loginTab.className = 'flex-1 pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-600';
+            submitBtn.textContent = 'Create Account';
+        }
+        hideMessages();
+    }
+
+    function hideMessages() {
+        document.getElementById('auth-error').classList.add('hidden');
+        document.getElementById('auth-success').classList.add('hidden');
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('auth-error');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+
+    function showSuccess(msg) {
+        const el = document.getElementById('auth-success');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+
+    async function handleEmailAuth(e) {
+        e.preventDefault();
+        hideMessages();
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
+        const endpoint = authMode === 'login' ? '/auth/login' : '/auth/register';
+
+        try {
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+            const data = await resp.json();
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            if (authMode === 'register') {
+                showSuccess(data.message || 'Registration successful!');
+                return;
+            }
+            // Login success — set cookie and redirect
+            if (data.access_token) {
+                document.cookie = `sb-access-token=${data.access_token}; path=/; SameSite=Lax; max-age=3600`;
+                if (data.refresh_token) {
+                    document.cookie = `sb-refresh-token=${data.refresh_token}; path=/; SameSite=Lax; max-age=604800`;
+                }
+                window.location.href = '/';
+            }
+        } catch (err) {
+            showError('Network error: ' + err.message);
+        }
+    }
+
+    async function signInWithGoogle() {
+        if (!supabaseClient) { showError('OAuth not configured'); return; }
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin + '/auth/callback' },
+        });
+        if (error) showError(error.message);
+    }
+
+    async function signInWithApple() {
+        if (!supabaseClient) { showError('OAuth not configured'); return; }
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'apple',
+            options: { redirectTo: window.location.origin + '/auth/callback' },
+        });
+        if (error) showError(error.message);
+    }
+    </script>
+</body>
+</html>

@@ -16,6 +16,55 @@ const WIZARD_STEPS = [
 const CORRECTABLE_STEPS = ['wireframe', 'field_mapping', 'dax', 'rls'];
 const SKIPPABLE_STEPS = ['dax', 'rls'];
 
+// Track which steps have been completed (have data)
+let wizardCompletedSteps = new Set();
+
+// ---------- Clickable Step Navigation ----------
+
+async function goToStep(step) {
+    if (step === wizardCurrentStep) return;
+
+    // Always allow navigating to init
+    if (step === 'init') {
+        showStep('init');
+        return;
+    }
+
+    // If step has cached data, show it immediately
+    if (wizardData[step]) {
+        showStep(step);
+        renderStepData(step, wizardData[step]);
+        return;
+    }
+
+    // If we have a run, try to fetch the step's artifact data from the server
+    if (wizardRunId) {
+        showStep(step);
+        showLoading(step, true);
+        try {
+            const resp = await fetch(`/api/runs/${wizardRunId}/step/${step}/data`);
+            const result = await resp.json();
+            showLoading(step, false);
+            if (result && result.data) {
+                wizardData[step] = result.data;
+                wizardCompletedSteps.add(step);
+                renderStepData(step, result.data);
+            } else {
+                // No data yet — show skeleton preview
+                showSkeleton(step, true);
+            }
+        } catch {
+            showLoading(step, false);
+            showSkeleton(step, true);
+        }
+        return;
+    }
+
+    // No run exists — show step with skeleton preview
+    showStep(step);
+    showSkeleton(step, true);
+}
+
 // ---------- Step Navigation ----------
 
 function showStep(step) {
@@ -56,20 +105,24 @@ function updateStepIndicator(currentStep) {
         const line = document.getElementById('step-line-' + step);
         if (!dot) return;
 
-        if (i < idx) {
-            dot.className = 'step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-green-500 text-white';
+        const isCompleted = wizardCompletedSteps.has(step) || i < idx;
+        const isCurrent = i === idx;
+        const hoverRing = ' hover:ring-2 hover:ring-blue-300 transition-colors';
+
+        if (isCompleted && !isCurrent) {
+            dot.className = 'step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-green-500 text-white cursor-pointer' + hoverRing;
             dot.innerHTML = '&#10003;';
-            if (label) label.className = 'text-xs mt-1 text-green-600';
+            if (label) label.className = 'text-xs mt-1 text-green-600 cursor-pointer';
             if (line) line.className = 'flex-1 h-0.5 bg-green-500 mx-1 step-line';
-        } else if (i === idx) {
-            dot.className = 'step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-blue-600 text-white';
+        } else if (isCurrent) {
+            dot.className = 'step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-blue-600 text-white cursor-pointer' + hoverRing;
             dot.textContent = i + 1;
-            if (label) label.className = 'text-xs mt-1 text-blue-700 font-semibold';
+            if (label) label.className = 'text-xs mt-1 text-blue-700 font-semibold cursor-pointer';
             if (line) line.className = 'flex-1 h-0.5 bg-gray-200 mx-1 step-line';
         } else {
-            dot.className = 'step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-200 text-gray-500';
+            dot.className = 'step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-200 text-gray-500 cursor-pointer' + hoverRing;
             dot.textContent = i + 1;
-            if (label) label.className = 'text-xs mt-1 text-gray-400';
+            if (label) label.className = 'text-xs mt-1 text-gray-400 cursor-pointer';
             if (line) line.className = 'flex-1 h-0.5 bg-gray-200 mx-1 step-line';
         }
     });
@@ -186,6 +239,7 @@ async function submitCorrections() {
 }
 
 async function executeStep(step) {
+    showSkeleton(step, false);
     showLoading(step, true);
 
     const data = await runStep(step);
@@ -197,7 +251,9 @@ async function executeStep(step) {
     const stepData = data.brief || data.wireframe || data.field_mapped ||
                      data.dax || data.qa || data.rls || data.report_dir || data;
     wizardData[step] = stepData;
+    wizardCompletedSteps.add(step);
     renderStepData(step, stepData);
+    updateStepIndicator(wizardCurrentStep);
 }
 
 function showLoading(step, show) {
@@ -213,6 +269,25 @@ function showLoading(step, show) {
 
     if (loadingId) {
         const el = document.getElementById(loadingId);
+        if (el) el.classList.toggle('hidden', !show);
+    }
+}
+
+// ---------- Skeleton Previews ----------
+
+function showSkeleton(step, show) {
+    const skeletonId = {
+        ingestion: 'ingestion-skeleton',
+        wireframe: 'wireframe-skeleton',
+        field_mapping: 'field-mapping-skeleton',
+        dax: 'dax-skeleton',
+        qa: 'qa-skeleton',
+        pbir: 'pbir-skeleton',
+        rls: 'rls-skeleton',
+    }[step];
+
+    if (skeletonId) {
+        const el = document.getElementById(skeletonId);
         if (el) el.classList.toggle('hidden', !show);
     }
 }

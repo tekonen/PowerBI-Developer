@@ -1,4 +1,4 @@
-<!-- Horizontal wizard step indicator -->
+<!-- Horizontal wizard step indicator (clickable) -->
 <div id="step-indicator" class="flex items-center justify-between mb-8 px-2">
     {% set steps = [
         ("init", "Upload"),
@@ -13,9 +13,12 @@
         ("publish", "Publish"),
     ] %}
     {% for key, label in steps %}
-    <div class="flex flex-col items-center step-item" data-step="{{ key }}">
-        <div class="step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
-            {% if key == current_step %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-500{% endif %}"
+    <div class="flex flex-col items-center step-item cursor-pointer" data-step="{{ key }}"
+         onclick="goToStep('{{ key }}')" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter')goToStep('{{ key }}')">
+        <div class="step-circle w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors
+            {% if key == current_step %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-500{% endif %}
+            hover:ring-2 hover:ring-blue-300"
             id="step-dot-{{ key }}">
             {{ loop.index }}
         </div>

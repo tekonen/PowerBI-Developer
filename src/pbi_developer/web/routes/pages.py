@@ -16,10 +16,30 @@ def _get_store() -> RunStore:
     return store
 
 
+def _get_store_for_request(request: Request) -> RunStore:
+    """Return user-scoped store when Supabase is configured, otherwise global."""
+    from pbi_developer.web.auth import get_current_user_id
+    from pbi_developer.web.supabase_client import is_supabase_configured
+
+    if is_supabase_configured():
+        user_id = get_current_user_id(request)
+        if user_id:
+            from pbi_developer.web.store_factory import get_store
+
+            return get_store(user_id)
+    return _get_store()
+
+
 def _get_templates():
     from pbi_developer.web.app import templates
 
     return templates
+
+
+def _user_context(request: Request) -> dict:
+    """Extract user context for template rendering."""
+    user = getattr(request.state, "user", None)
+    return {"user_email": user.email if user else None}
 
 
 def _mask(value: str) -> str:
@@ -30,8 +50,10 @@ def _mask(value: str) -> str:
 
 @router.get("/")
 async def page_dashboard(request: Request):
-    runs = _get_store().list_runs()
-    return _get_templates().TemplateResponse(name="dashboard.html", request=request, context={"runs": runs})
+    runs = _get_store_for_request(request).list_runs()
+    return _get_templates().TemplateResponse(
+        name="dashboard.html", request=request, context={"runs": runs, **_user_context(request)}
+    )
 
 
 @router.get("/generate")
@@ -39,20 +61,24 @@ async def page_generate(request: Request):
     return _get_templates().TemplateResponse(
         name="generate.html",
         request=request,
-        context={"stages": STAGE_LABELS, "current_step": "init"},
+        context={"stages": STAGE_LABELS, "current_step": "init", **_user_context(request)},
     )
 
 
 @router.get("/refine")
 async def page_refine(request: Request):
-    runs = [r for r in _get_store().list_runs() if r.status in ("completed", "failed")]
-    return _get_templates().TemplateResponse(name="refine.html", request=request, context={"runs": runs})
+    runs = [r for r in _get_store_for_request(request).list_runs() if r.status in ("completed", "failed")]
+    return _get_templates().TemplateResponse(
+        name="refine.html", request=request, context={"runs": runs, **_user_context(request)}
+    )
 
 
 @router.get("/deploy")
 async def page_deploy(request: Request):
-    runs = [r for r in _get_store().list_runs() if r.status == "completed"]
-    return _get_templates().TemplateResponse(name="deploy.html", request=request, context={"runs": runs})
+    runs = [r for r in _get_store_for_request(request).list_runs() if r.status == "completed"]
+    return _get_templates().TemplateResponse(
+        name="deploy.html", request=request, context={"runs": runs, **_user_context(request)}
+    )
 
 
 @router.get("/settings")
@@ -69,4 +95,6 @@ async def page_settings(request: Request):
         "max_qa_retries": settings.pipeline.max_qa_retries,
         "require_human_review": settings.pipeline.require_human_review,
     }
-    return _get_templates().TemplateResponse(name="settings.html", request=request, context={"config": config})
+    return _get_templates().TemplateResponse(
+        name="settings.html", request=request, context={"config": config, **_user_context(request)}
+    )

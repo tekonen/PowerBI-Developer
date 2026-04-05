@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% set active = "" %}
+{% block title %}Setup — PBI Developer{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-800">Welcome to PBI Developer</h2>
+        <p class="text-gray-500 mt-2">Let's set up your environment. You can update these settings anytime.</p>
+    </div>
+
+    <!-- Onboarding step indicator -->
+    <div class="flex items-center justify-center mb-8 gap-2">
+        <div class="flex items-center" id="onboard-step-1-indicator">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-blue-600 text-white" id="onboard-dot-1">1</div>
+            <span class="text-xs ml-1 text-blue-700 font-semibold">AI</span>
+        </div>
+        <div class="w-8 h-0.5 bg-gray-200" id="onboard-line-1"></div>
+        <div class="flex items-center" id="onboard-step-2-indicator">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-200 text-gray-500" id="onboard-dot-2">2</div>
+            <span class="text-xs ml-1 text-gray-400">Power BI</span>
+        </div>
+        <div class="w-8 h-0.5 bg-gray-200" id="onboard-line-2"></div>
+        <div class="flex items-center" id="onboard-step-3-indicator">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-200 text-gray-500" id="onboard-dot-3">3</div>
+            <span class="text-xs ml-1 text-gray-400">Snowflake</span>
+        </div>
+        <div class="w-8 h-0.5 bg-gray-200" id="onboard-line-3"></div>
+        <div class="flex items-center" id="onboard-step-4-indicator">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-200 text-gray-500" id="onboard-dot-4">4</div>
+            <span class="text-xs ml-1 text-gray-400">Style</span>
+        </div>
+    </div>
+
+    <!-- Error/success messages -->
+    <div id="onboard-error" class="hidden mb-4 bg-red-50 text-red-700 text-sm rounded-lg p-3"></div>
+    <div id="onboard-success" class="hidden mb-4 bg-green-50 text-green-700 text-sm rounded-lg p-3"></div>
+
+    <!-- Step 1: Claude / AI Configuration -->
+    <div id="onboard-step-1" class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold mb-4">Claude AI Configuration</h3>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">API Key <span class="text-red-500">*</span></label>
+                <input type="password" id="ob-claude-api-key" placeholder="sk-ant-..."
+                       class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Base URL <span class="text-gray-400">(optional)</span></label>
+                <input type="text" id="ob-claude-base-url" placeholder="Leave blank for default"
+                       class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                <select id="ob-claude-model" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                    <option value="claude-opus-4-20250514">Claude Opus 4</option>
+                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button onclick="saveOnboardingStep(1)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                Next
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 2: Power BI Credentials -->
+    <div id="onboard-step-2" class="bg-white rounded-lg shadow p-6 hidden">
+        <h3 class="text-lg font-semibold mb-4">Power BI Credentials</h3>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Azure Tenant ID</label>
+                <input type="text" id="ob-pbi-tenant-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                       class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                <input type="text" id="ob-pbi-client-id" placeholder="App registration client ID"
+                       class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+                <input type="password" id="ob-pbi-client-secret" placeholder="App registration client secret"
+                       class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Workspace ID</label>
+                <input type="text" id="ob-pbi-workspace-id" placeholder="Power BI workspace ID"
+                       class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <button onclick="testConnection('powerbi')" id="ob-test-pbi-btn"
+                    class="text-sm text-blue-600 hover:text-blue-800 underline">
+                Test Connection
+            </button>
+            <div id="ob-test-pbi-result" class="hidden text-sm mt-1"></div>
+        </div>
+        <div class="mt-6 flex justify-between">
+            <button onclick="goToOnboardingStep(1)" class="px-4 py-2 text-gray-500 text-sm hover:text-gray-700">Back</button>
+            <div class="flex gap-2">
+                <button onclick="skipOnboardingStep(2)" class="px-4 py-2 text-gray-400 text-sm hover:text-gray-600">Skip</button>
+                <button onclick="saveOnboardingStep(2)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Snowflake Credentials -->
+    <div id="onboard-step-3" class="bg-white rounded-lg shadow p-6 hidden">
+        <h3 class="text-lg font-semibold mb-4">Snowflake Credentials</h3>
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Account</label>
+                    <input type="text" id="ob-sf-account" placeholder="xy12345.us-east-1"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">User</label>
+                    <input type="text" id="ob-sf-user" placeholder="Username"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="ob-sf-password"
+                       class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Warehouse</label>
+                    <input type="text" id="ob-sf-warehouse"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Database</label>
+                    <input type="text" id="ob-sf-database"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Schema</label>
+                    <input type="text" id="ob-sf-schema"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <button onclick="testConnection('snowflake')" id="ob-test-sf-btn"
+                    class="text-sm text-blue-600 hover:text-blue-800 underline">
+                Test Connection
+            </button>
+            <div id="ob-test-sf-result" class="hidden text-sm mt-1"></div>
+        </div>
+        <div class="mt-6 flex justify-between">
+            <button onclick="goToOnboardingStep(2)" class="px-4 py-2 text-gray-500 text-sm hover:text-gray-700">Back</button>
+            <div class="flex gap-2">
+                <button onclick="skipOnboardingStep(3)" class="px-4 py-2 text-gray-400 text-sm hover:text-gray-600">Skip</button>
+                <button onclick="saveOnboardingStep(3)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4: Report Style Preferences -->
+    <div id="onboard-step-4" class="bg-white rounded-lg shadow p-6 hidden">
+        <h3 class="text-lg font-semibold mb-4">Report Style Preferences</h3>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Color Palette</label>
+                <div id="ob-color-palette" class="flex flex-wrap gap-2">
+                    <input type="text" value="#118DFF" class="ob-color-input w-20 border rounded px-2 py-1 text-xs text-center" style="background-color:#118DFF;color:white">
+                    <input type="text" value="#12239E" class="ob-color-input w-20 border rounded px-2 py-1 text-xs text-center" style="background-color:#12239E;color:white">
+                    <input type="text" value="#E66C37" class="ob-color-input w-20 border rounded px-2 py-1 text-xs text-center" style="background-color:#E66C37;color:white">
+                    <input type="text" value="#6B007B" class="ob-color-input w-20 border rounded px-2 py-1 text-xs text-center" style="background-color:#6B007B;color:white">
+                    <input type="text" value="#E044A7" class="ob-color-input w-20 border rounded px-2 py-1 text-xs text-center" style="background-color:#E044A7;color:white">
+                    <input type="text" value="#744EC2" class="ob-color-input w-20 border rounded px-2 py-1 text-xs text-center" style="background-color:#744EC2;color:white">
+                    <input type="text" value="#D9B300" class="ob-color-input w-20 border rounded px-2 py-1 text-xs text-center" style="background-color:#D9B300;color:white">
+                    <input type="text" value="#D64550" class="ob-color-input w-20 border rounded px-2 py-1 text-xs text-center" style="background-color:#D64550;color:white">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Preferred Visuals</label>
+                <div class="flex flex-wrap gap-3">
+                    {% set visual_types = ["card", "clusteredBarChart", "lineChart", "table", "slicer", "pieChart", "donutChart", "areaChart", "treemap", "kpi"] %}
+                    {% set defaults = ["card", "clusteredBarChart", "lineChart", "table", "slicer"] %}
+                    {% for vt in visual_types %}
+                    <label class="flex items-center gap-1 text-sm">
+                        <input type="checkbox" value="{{ vt }}" class="ob-visual-check rounded text-blue-600"
+                               {% if vt in defaults %}checked{% endif %}>
+                        {{ vt }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Page Width</label>
+                    <input type="number" id="ob-page-width" value="1280" min="800" max="3840"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Page Height</label>
+                    <input type="number" id="ob-page-height" value="720" min="600" max="2160"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+        </div>
+        <div class="mt-6 flex justify-between">
+            <button onclick="goToOnboardingStep(3)" class="px-4 py-2 text-gray-500 text-sm hover:text-gray-700">Back</button>
+            <button onclick="finishOnboarding()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
+                Finish Setup
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/onboarding.js"></script>
+{% endblock %}
