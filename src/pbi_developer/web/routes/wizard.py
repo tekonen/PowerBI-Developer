@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from pbi_developer.web.models import WIZARD_STEPS, MetadataFetchRequest, StepCorrectRequest
@@ -17,6 +17,20 @@ def _get_store():
     from pbi_developer.web.app import store
 
     return store
+
+
+def _get_store_for_request(request: Request):
+    """Return user-scoped store when Supabase is configured, otherwise global."""
+    from pbi_developer.web.auth import get_current_user_id
+    from pbi_developer.web.supabase_client import is_supabase_configured
+
+    if is_supabase_configured():
+        user_id = get_current_user_id(request)
+        if user_id:
+            from pbi_developer.web.store_factory import get_store
+
+            return get_store(user_id)
+    return _get_store()
 
 
 def _auto_commit(message: str, run_id: str, output_path: Path | str) -> None:
@@ -51,9 +65,9 @@ async def api_get_dataset_metadata(dataset_id: str):
 
 
 @router.post("/runs/{run_id}/step/ingest")
-async def api_step_ingest(run_id: str):
+async def api_step_ingest(request: Request, run_id: str):
     """Run ingestion step only, return structured brief."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -95,11 +109,12 @@ async def api_step_ingest(run_id: str):
 
 @router.post("/runs/{run_id}/step/metadata/upload")
 async def api_step_metadata_upload(
+    request: Request,
     run_id: str,
     model_metadata: UploadFile = File(...),
 ):
     """Upload a metadata file for the semantic model step."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -122,10 +137,10 @@ async def api_step_metadata_upload(
 
 
 @router.post("/runs/{run_id}/step/metadata/fetch")
-async def api_step_metadata_fetch(run_id: str, req: MetadataFetchRequest):
+async def api_step_metadata_fetch(request: Request, run_id: str, req: MetadataFetchRequest):
     """Fetch metadata from a Power BI dataset for the semantic model step."""
 
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -147,9 +162,9 @@ async def api_step_metadata_fetch(run_id: str, req: MetadataFetchRequest):
 
 
 @router.post("/runs/{run_id}/step/wireframe")
-async def api_step_wireframe(run_id: str):
+async def api_step_wireframe(request: Request, run_id: str):
     """Run wireframe design step, return wireframe JSON."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -167,9 +182,9 @@ async def api_step_wireframe(run_id: str):
 
 
 @router.post("/runs/{run_id}/step/field-mapping")
-async def api_step_field_mapping(run_id: str):
+async def api_step_field_mapping(request: Request, run_id: str):
     """Run field mapping step, return field-mapped wireframe JSON."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -187,9 +202,9 @@ async def api_step_field_mapping(run_id: str):
 
 
 @router.post("/runs/{run_id}/step/dax")
-async def api_step_dax(run_id: str):
+async def api_step_dax(request: Request, run_id: str):
     """Run DAX measure generation step, return measures JSON."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -207,9 +222,9 @@ async def api_step_dax(run_id: str):
 
 
 @router.post("/runs/{run_id}/step/qa")
-async def api_step_qa(run_id: str):
+async def api_step_qa(request: Request, run_id: str):
     """Run QA validation step, return pass/fail results."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -227,9 +242,9 @@ async def api_step_qa(run_id: str):
 
 
 @router.post("/runs/{run_id}/step/pbir")
-async def api_step_pbir(run_id: str):
+async def api_step_pbir(request: Request, run_id: str):
     """Run PBIR generation step."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -247,9 +262,9 @@ async def api_step_pbir(run_id: str):
 
 
 @router.post("/runs/{run_id}/step/rls")
-async def api_step_rls(run_id: str):
+async def api_step_rls(request: Request, run_id: str):
     """Run RLS generation step, return RLS config JSON."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -266,10 +281,77 @@ async def api_step_rls(run_id: str):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+@router.post("/runs/{run_id}/step/rls/test")
+async def api_step_rls_test(request: Request, run_id: str):
+    """Test RLS/OLS rules against a sample user identity."""
+    store = _get_store_for_request(request)
+    run = store.get_run(run_id)
+    if not run:
+        return JSONResponse({"error": "Run not found"}, status_code=404)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    user_email = body.get("user_email", "")
+    expected_access = body.get("expected_access", "")
+    if not user_email:
+        return JSONResponse({"error": "user_email is required"}, status_code=400)
+
+    output_dir = store.get_output_dir(run_id)
+    artifacts = output_dir / "artifacts"
+    rls_path = artifacts / "rls_config.json"
+
+    if not rls_path.exists():
+        return JSONResponse({"error": "No security config found. Run the Security step first."}, status_code=400)
+
+    from pbi_developer.utils.files import read_json
+
+    rls_config = read_json(rls_path)
+
+    # Evaluate the user against RLS roles
+    rls_result_parts = []
+    for role in rls_config.get("roles", []):
+        filters = []
+        for tp in role.get("table_permissions", []):
+            filters.append(f"{tp.get('table', '?')}: {tp.get('filter_expression', '?')}")
+        rls_result_parts.append(f"Role '{role.get('role_name', '?')}': {'; '.join(filters) or 'no filters'}")
+
+    # Check against existing validation results
+    passed = None
+    explanation = ""
+    for v in rls_config.get("validation_results", []):
+        if v.get("example_user", "").lower() == user_email.lower():
+            passed = v.get("passed")
+            explanation = v.get("explanation", v.get("filter_result", ""))
+            break
+
+    # Evaluate OLS
+    ols_result_parts = []
+    for rule in rls_config.get("ols_rules", rls_config.get("ols", [])):
+        hidden = []
+        hidden.extend(rule.get("hidden_tables", []))
+        for c in rule.get("hidden_columns", []):
+            hidden.append(c if isinstance(c, str) else f"{c.get('table', '?')}.{c.get('column', '?')}")
+        if hidden:
+            role_name = rule.get("role_name", rule.get("name", "?"))
+            ols_result_parts.append(f"Role '{role_name}': hidden [{', '.join(hidden)}]")
+
+    return {
+        "user_email": user_email,
+        "expected_access": expected_access,
+        "passed": passed,
+        "rls_result": "; ".join(rls_result_parts) if rls_result_parts else "No RLS roles defined",
+        "ols_result": "; ".join(ols_result_parts) if ols_result_parts else "No OLS rules configured",
+        "explanation": explanation,
+    }
+
+
 @router.post("/runs/{run_id}/step/{stage}/correct")
-async def api_step_correct(run_id: str, stage: str, req: StepCorrectRequest):
+async def api_step_correct(request: Request, run_id: str, stage: str, req: StepCorrectRequest):
     """Re-run a wizard step with user corrections."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -300,9 +382,9 @@ async def api_step_correct(run_id: str, stage: str, req: StepCorrectRequest):
 
 
 @router.post("/runs/{run_id}/step/{stage}/accept")
-async def api_step_accept(run_id: str, stage: str):
+async def api_step_accept(request: Request, run_id: str, stage: str):
     """Accept a wizard step's output, git-commit, and advance to next step."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -345,9 +427,9 @@ async def api_step_accept(run_id: str, stage: str):
 
 
 @router.get("/runs/{run_id}/step/{stage}/data")
-async def api_step_data(run_id: str, stage: str):
+async def api_step_data(request: Request, run_id: str, stage: str):
     """Retrieve the current artifact data for a wizard step."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)

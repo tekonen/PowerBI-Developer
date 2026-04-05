@@ -3,7 +3,7 @@
  * Handles tab switching, data loading, and CRUD operations for the admin page.
  */
 
-const TABS = ['users', 'runs', 'prompts', 'config'];
+const TABS = ['users', 'runs', 'prompts', 'config', 'api'];
 let runsOffset = 0;
 const RUNS_LIMIT = 50;
 let runsData = [];
@@ -32,6 +32,7 @@ function switchAdminTab(tab) {
     if (tab === 'runs' && runsData.length === 0) { runsOffset = 0; loadRuns(0); }
     if (tab === 'prompts' && !promptsLoaded) loadPrompts();
     if (tab === 'config' && !configLoaded) loadConfig();
+    if (tab === 'api') loadApiEndpoints();
 }
 
 // ---- Users ----
@@ -182,11 +183,11 @@ async function loadPrompts() {
 function renderPromptCard(agent) {
     const name = agent.name || agent.agent_name || 'unknown';
     const safeId = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const version = agent.version || '-';
+    const version = agent.version_label || agent.version || '-';
     const hash = agent.content_hash || '-';
-    const content = agent.content || agent.template || '';
-    const preview = content.length > 200 ? content.slice(0, 200) + '...' : content;
-    const vars = agent.template_variables || agent.variables || [];
+    const content = agent.full_prompt || agent.system_prompt || agent.content || agent.template || '';
+    const preview = agent.preview || (content.length > 200 ? content.slice(0, 200) + '...' : content);
+    const vars = agent.template_vars || agent.template_variables || agent.variables || [];
     const varTags = vars.map(v => `<span class="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded mr-1 mb-1">${escHtml(v)}</span>`).join('');
 
     return `
@@ -244,7 +245,7 @@ async function savePrompt(agentName) {
         const resp = await fetch(`/api/admin/prompts/${encodeURIComponent(agentName)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content }),
+            body: JSON.stringify({ system_prompt: content }),
         });
         const data = await resp.json();
         statusEl.classList.remove('hidden');
@@ -346,6 +347,109 @@ async function saveConfig(event) {
         statusEl.classList.remove('hidden');
         statusEl.className = 'mt-3 text-sm text-red-600';
         statusEl.textContent = `Failed to save: ${err.message}`;
+    }
+}
+
+// ---- API Explorer ----
+
+const API_ENDPOINTS = [
+    { method: 'GET', path: '/api/runs', desc: 'List all runs' },
+    { method: 'GET', path: '/api/settings', desc: 'Get current settings (masked)' },
+    { method: 'GET', path: '/api/graph', desc: 'Knowledge graph summary' },
+    { method: 'POST', path: '/api/runs', desc: 'Create a new pipeline run' },
+    { method: 'POST', path: '/api/deploy', desc: 'Deploy report to Power BI Service' },
+    { method: 'POST', path: '/api/validate', desc: 'Validate a PBIR folder' },
+    { method: 'POST', path: '/api/connect/powerbi', desc: 'Test Power BI connection' },
+    { method: 'POST', path: '/api/connect/snowflake', desc: 'Test Snowflake connection' },
+    { method: 'GET', path: '/api/datasets', desc: 'List Power BI datasets' },
+    { method: 'GET', path: '/api/admin/users', desc: 'List all users (admin)' },
+    { method: 'GET', path: '/api/admin/users/stats', desc: 'User/run statistics (admin)' },
+    { method: 'GET', path: '/api/admin/runs', desc: 'List all runs (admin)' },
+    { method: 'GET', path: '/api/admin/prompts', desc: 'List system prompts (admin)' },
+    { method: 'GET', path: '/api/admin/config', desc: 'Get global config (admin)' },
+    { method: 'PUT', path: '/api/admin/config', desc: 'Update global config (admin)' },
+    { method: 'GET', path: '/health', desc: 'Health check' },
+];
+
+let apiEndpointsLoaded = false;
+
+function loadApiEndpoints() {
+    if (apiEndpointsLoaded) return;
+    const wrapper = document.getElementById('api-endpoints-list');
+    const rows = API_ENDPOINTS.map(ep => {
+        const methodClass = ep.method === 'GET' ? 'bg-green-100 text-green-700' :
+                            ep.method === 'POST' ? 'bg-blue-100 text-blue-700' :
+                            ep.method === 'PUT' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700';
+        return `
+        <div class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+             onclick="fillApiTester('${ep.method}', '${ep.path}')">
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold ${methodClass}">${ep.method}</span>
+            <code class="text-sm text-gray-700 flex-1">${ep.path}</code>
+            <span class="text-xs text-gray-400">${escHtml(ep.desc)}</span>
+        </div>`;
+    }).join('');
+    wrapper.innerHTML = rows;
+    apiEndpointsLoaded = true;
+
+    // Show/hide body textarea based on method
+    document.getElementById('api-method').addEventListener('change', toggleApiBody);
+    toggleApiBody();
+}
+
+function toggleApiBody() {
+    const method = document.getElementById('api-method').value;
+    const wrapper = document.getElementById('api-body-wrapper');
+    if (method === 'POST' || method === 'PUT') {
+        wrapper.classList.remove('hidden');
+    } else {
+        wrapper.classList.add('hidden');
+    }
+}
+
+function fillApiTester(method, path) {
+    document.getElementById('api-method').value = method;
+    document.getElementById('api-url').value = path;
+    toggleApiBody();
+}
+
+async function testApiEndpoint() {
+    const method = document.getElementById('api-method').value;
+    const url = document.getElementById('api-url').value;
+    const bodyText = document.getElementById('api-body').value.trim();
+    const responseDiv = document.getElementById('api-response');
+    const statusBadge = document.getElementById('api-status-badge');
+    const responseTime = document.getElementById('api-response-time');
+    const responseBody = document.getElementById('api-response-body');
+
+    const fetchOpts = { method };
+    if ((method === 'POST' || method === 'PUT') && bodyText) {
+        fetchOpts.headers = { 'Content-Type': 'application/json' };
+        fetchOpts.body = bodyText;
+    }
+
+    const start = performance.now();
+    try {
+        const resp = await fetch(url, fetchOpts);
+        const elapsed = Math.round(performance.now() - start);
+        const data = await resp.text();
+
+        responseDiv.classList.remove('hidden');
+        statusBadge.textContent = `${resp.status} ${resp.statusText}`;
+        statusBadge.className = `px-2 py-0.5 rounded text-xs font-medium ${resp.ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+        responseTime.textContent = `${elapsed}ms`;
+
+        try {
+            responseBody.textContent = JSON.stringify(JSON.parse(data), null, 2);
+        } catch {
+            responseBody.textContent = data;
+        }
+    } catch (err) {
+        responseDiv.classList.remove('hidden');
+        statusBadge.textContent = 'Error';
+        statusBadge.className = 'px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700';
+        responseTime.textContent = '';
+        responseBody.textContent = err.message;
     }
 }
 
