@@ -51,6 +51,51 @@
         </div>
     </div>
 
+    {% if user_config %}
+    <!-- User-specific settings -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-lg font-semibold mb-4">Your Settings</h3>
+        <p class="text-sm text-gray-500 mb-4">These are your personal overrides. Update them in the onboarding wizard or contact an admin.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+                <span class="text-gray-500">Claude Model:</span>
+                <span class="ml-2 font-medium">{{ user_config.claude_model or "(global default)" }}</span>
+            </div>
+            <div>
+                <span class="text-gray-500">API Key:</span>
+                <span class="ml-2 {% if user_config.api_key_set %}text-green-600{% else %}text-yellow-600{% endif %}">
+                    {{ "Set" if user_config.api_key_set else "Using global" }}
+                </span>
+            </div>
+            <div>
+                <span class="text-gray-500">Power BI Workspace:</span>
+                <span class="ml-2 font-medium">{{ user_config.pbi_workspace_id or "(not set)" }}</span>
+            </div>
+            <div>
+                <span class="text-gray-500">Power BI Credentials:</span>
+                <span class="ml-2 {% if user_config.pbi_tenant_set %}text-green-600{% else %}text-gray-400{% endif %}">
+                    {{ "Configured" if user_config.pbi_tenant_set else "Not set" }}
+                </span>
+            </div>
+            <div>
+                <span class="text-gray-500">Snowflake:</span>
+                <span class="ml-2 {% if user_config.sf_account_set %}text-green-600{% else %}text-gray-400{% endif %}">
+                    {{ "Configured" if user_config.sf_account_set else "Not set" }}
+                </span>
+            </div>
+            <div>
+                <span class="text-gray-500">Onboarding:</span>
+                <span class="ml-2 {% if user_config.onboarding_completed %}text-green-600{% else %}text-yellow-600{% endif %}">
+                    {{ "Completed" if user_config.onboarding_completed else "Incomplete" }}
+                </span>
+            </div>
+        </div>
+        <div class="mt-4">
+            <a href="/onboarding" class="text-sm text-blue-600 hover:text-blue-800 underline">Update your settings</a>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Connection tests -->
     <div class="bg-white rounded-lg shadow p-6">
         <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">Connection Tests</h3>
