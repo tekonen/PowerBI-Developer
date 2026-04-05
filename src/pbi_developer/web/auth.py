@@ -111,13 +111,7 @@ def is_user_admin(user_id: str) -> bool:
         client = get_service_client()
         if client is None:
             return False
-        row = (
-            client.table("user_settings")
-            .select("is_admin")
-            .eq("user_id", user_id)
-            .maybe_single()
-            .execute()
-        )
+        row = client.table("user_settings").select("is_admin").eq("user_id", user_id).maybe_single().execute()
         if row.data and row.data.get("is_admin"):
             return True
     except Exception:
