@@ -36,15 +36,16 @@ class BaseAgent:
     system_prompt: str = "You are a helpful assistant."
     agent_name: str = "base"
 
-    def __init__(self, model: str | None = None, max_tokens: int | None = None):
+    def __init__(self, model: str | None = None, max_tokens: int | None = None, user_settings=None):
+        cfg = user_settings or settings
         llm_kwargs: dict[str, Any] = {
-            "model": model or settings.claude.model,
-            "max_tokens": max_tokens or settings.claude.max_tokens,
-            "temperature": settings.claude.temperature,
-            "api_key": settings.claude.api_key,
+            "model": model or cfg.claude.model,
+            "max_tokens": max_tokens or cfg.claude.max_tokens,
+            "temperature": cfg.claude.temperature,
+            "api_key": cfg.claude.api_key,
         }
-        if settings.claude.base_url:
-            llm_kwargs["base_url"] = settings.claude.base_url
+        if cfg.claude.base_url:
+            llm_kwargs["base_url"] = cfg.claude.base_url
         self.llm = ChatAnthropic(**llm_kwargs)
         self.model = llm_kwargs["model"]
         self.max_tokens = llm_kwargs["max_tokens"]

@@ -21,6 +21,39 @@ def _get_store():
     return store
 
 
+def _get_store_for_request(request: Request):
+    """Return user-scoped store when Supabase is configured, otherwise global."""
+    from pbi_developer.web.auth import get_current_user_id
+    from pbi_developer.web.supabase_client import is_supabase_configured
+
+    if is_supabase_configured():
+        user_id = get_current_user_id(request)
+        if user_id:
+            from pbi_developer.web.store_factory import get_store
+
+            return get_store(user_id)
+    return _get_store()
+
+
+def _get_user_settings(request: Request):
+    """Build user-specific settings if authenticated, otherwise global."""
+    from pbi_developer.web.auth import get_current_user_id
+    from pbi_developer.web.supabase_client import is_supabase_configured
+
+    if is_supabase_configured():
+        user_id = get_current_user_id(request)
+        if user_id:
+            try:
+                from pbi_developer.web.user_settings_service import build_settings_for_user
+
+                return build_settings_for_user(user_id)
+            except Exception:
+                pass
+    from pbi_developer.config import settings
+
+    return settings
+
+
 def _get_version_mgr():
     from pbi_developer.web.app import version_mgr
 
@@ -52,13 +85,13 @@ def _mask(value: str) -> str:
 
 
 @router.get("/runs")
-async def api_list_runs():
-    return [r.model_dump(mode="json") for r in _get_store().list_runs()]
+async def api_list_runs(request: Request):
+    return [r.model_dump(mode="json") for r in _get_store_for_request(request).list_runs()]
 
 
 @router.get("/runs/{run_id}")
-async def api_get_run(run_id: str):
-    run = _get_store().get_run(run_id)
+async def api_get_run(request: Request, run_id: str):
+    run = _get_store_for_request(request).get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
     return run.model_dump(mode="json")
@@ -66,6 +99,7 @@ async def api_get_run(run_id: str):
 
 @router.post("/runs")
 async def api_create_run(
+    request: Request,
     brief: UploadFile | None = File(None),
     pptx: UploadFile | None = File(None),
     video: UploadFile | None = File(None),
@@ -82,7 +116,7 @@ async def api_create_run(
     When wizard=True, files are saved but the pipeline is NOT started.
     The wizard UI drives execution step-by-step via /step/* endpoints.
     """
-    store = _get_store()
+    store = _get_store_for_request(request)
     run_id = store.create_run(report_name=report_name, dry_run=dry_run)
     upload_dir = store.get_upload_dir(run_id)
 
@@ -177,9 +211,9 @@ async def api_run_events(run_id: str):
 
 
 @router.post("/runs/{run_id}/refine")
-async def api_refine_run(run_id: str, req: RefineRequest):
+async def api_refine_run(request: Request, run_id: str, req: RefineRequest):
     """Start refinement on an existing run."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     run = store.get_run(run_id)
     if not run:
         return JSONResponse({"error": "Run not found"}, status_code=404)
@@ -271,9 +305,9 @@ async def api_test_connection(target: str):
 
 
 @router.get("/runs/{run_id}/output")
-async def api_list_output(run_id: str):
+async def api_list_output(request: Request, run_id: str):
     """List files in a run's output directory."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     output_dir = store.get_output_dir(run_id)
     files = []
     for path in sorted(output_dir.rglob("*")):
@@ -283,9 +317,9 @@ async def api_list_output(run_id: str):
 
 
 @router.get("/runs/{run_id}/output/{file_path:path}")
-async def api_download_output(run_id: str, file_path: str):
+async def api_download_output(request: Request, run_id: str, file_path: str):
     """Download a specific output file (path-traversal protected)."""
-    store = _get_store()
+    store = _get_store_for_request(request)
     output_dir = store.get_output_dir(run_id)
     target = (output_dir / file_path).resolve()
     if not target.is_relative_to(output_dir.resolve()):
@@ -311,21 +345,21 @@ async def api_graph():
 
 
 @router.get("/settings")
-async def api_settings():
-    """Return current configuration (secrets masked)."""
-    from pbi_developer.config import settings
+async def api_settings(request: Request):
+    """Return current configuration (secrets masked), using user overrides if authenticated."""
+    cfg = _get_user_settings(request)
 
     return {
-        "claude_model": settings.claude.model,
-        "api_base_url": settings.claude.base_url or "(default)",
-        "max_tokens": settings.claude.max_tokens,
-        "temperature": settings.claude.temperature,
-        "api_key_set": bool(settings.claude.api_key),
-        "workspace_id": _mask(settings.powerbi.workspace_id),
-        "tenant_id": _mask(settings.powerbi.tenant_id),
-        "client_id": _mask(settings.powerbi.client_id),
-        "page_width": settings.pbir.default_page_width,
-        "page_height": settings.pbir.default_page_height,
-        "max_qa_retries": settings.pipeline.max_qa_retries,
-        "require_human_review": settings.pipeline.require_human_review,
+        "claude_model": cfg.claude.model,
+        "api_base_url": cfg.claude.base_url or "(default)",
+        "max_tokens": cfg.claude.max_tokens,
+        "temperature": cfg.claude.temperature,
+        "api_key_set": bool(cfg.claude.api_key),
+        "workspace_id": _mask(cfg.powerbi.workspace_id),
+        "tenant_id": _mask(cfg.powerbi.tenant_id),
+        "client_id": _mask(cfg.powerbi.client_id),
+        "page_width": cfg.pbir.default_page_width,
+        "page_height": cfg.pbir.default_page_height,
+        "max_qa_retries": cfg.pipeline.max_qa_retries,
+        "require_human_review": cfg.pipeline.require_human_review,
     }
