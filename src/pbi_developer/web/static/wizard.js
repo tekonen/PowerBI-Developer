@@ -134,12 +134,26 @@ function updateActionBar(step) {
     const skipBtn = document.getElementById('skip-step-btn');
     const correctionArea = document.getElementById('correction-area');
     const submitCorrectionsBtn = document.getElementById('submit-corrections-btn');
+    const undoBtn = document.getElementById('wizard-undo-btn');
+    const redoBtn = document.getElementById('wizard-redo-btn');
+    const versionInfo = document.getElementById('wizard-version-info');
 
     if (step === 'init' || step === 'publish') {
         bar.classList.add('hidden');
         return;
     }
     bar.classList.remove('hidden');
+
+    // Undo/redo only on correctable steps that have been worked on
+    if (CORRECTABLE_STEPS.includes(step) && wizardCompletedSteps.has(step)) {
+        undoBtn.classList.remove('hidden');
+        redoBtn.classList.remove('hidden');
+        if (versionInfo) versionInfo.classList.remove('hidden');
+    } else {
+        undoBtn.classList.add('hidden');
+        redoBtn.classList.add('hidden');
+        if (versionInfo) versionInfo.classList.add('hidden');
+    }
 
     // Show/hide correction button for correctable steps
     if (CORRECTABLE_STEPS.includes(step)) {
