@@ -760,6 +760,16 @@ document.getElementById('generate-form').addEventListener('submit', async (e) =>
         formData.set('dry_run', 'true');
     }
 
+    // If no brief file uploaded but text was typed, create a file from the textarea
+    const briefFileInput = document.getElementById('brief-file-input');
+    const briefTextInput = document.getElementById('brief-text-input');
+    if ((!briefFileInput || !briefFileInput.files.length) && briefTextInput && briefTextInput.value.trim()) {
+        const blob = new Blob([briefTextInput.value.trim()], { type: 'text/plain' });
+        formData.set('brief', blob, 'requirements.txt');
+    }
+    // Remove the brief_text field — backend doesn't expect it
+    formData.delete('brief_text');
+
     try {
         const resp = await fetch('/api/runs', { method: 'POST', body: formData });
         // Complete progress bar
