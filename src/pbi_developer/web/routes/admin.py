@@ -13,9 +13,13 @@ router = APIRouter(prefix="/api/admin")
 # Helpers
 # ---------------------------------------------------------------------------
 
-_SECRET_FIELDS = frozenset({
-    "api_key", "client_secret", "password",
-})
+_SECRET_FIELDS = frozenset(
+    {
+        "api_key",
+        "client_secret",
+        "password",
+    }
+)
 
 
 def _mask(value: str) -> str:
@@ -154,14 +158,16 @@ async def get_system_prompts(request: Request):
             prompts = []
             for name in reg.agents:
                 entry = reg.get(name)
-                prompts.append({
-                    "agent_name": entry.agent_name,
-                    "version_label": entry.version_label,
-                    "content_hash": entry.content_hash,
-                    "template_vars": entry.template_vars,
-                    "preview": entry.system_prompt[:200],
-                    "full_prompt": entry.system_prompt,
-                })
+                prompts.append(
+                    {
+                        "agent_name": entry.agent_name,
+                        "version_label": entry.version_label,
+                        "content_hash": entry.content_hash,
+                        "template_vars": entry.template_vars,
+                        "preview": entry.system_prompt[:200],
+                        "full_prompt": entry.system_prompt,
+                    }
+                )
         except ImportError:
             prompts = []
     except Exception as exc:
@@ -181,9 +187,7 @@ async def update_system_prompt(agent_name: str, request: Request):
         body = await request.json()
         new_prompt: str = body.get("system_prompt", "")
         if not new_prompt:
-            return JSONResponse(
-                {"error": "system_prompt is required"}, status_code=400
-            )
+            return JSONResponse({"error": "system_prompt is required"}, status_code=400)
     except Exception:
         return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
 
@@ -203,19 +207,13 @@ async def update_system_prompt(agent_name: str, request: Request):
             reg = PromptRegistry()
             entry = reg.get(agent_name)
             if entry is None:
-                return JSONResponse(
-                    {"error": f"Agent '{agent_name}' not found"}, status_code=404
-                )
+                return JSONResponse({"error": f"Agent '{agent_name}' not found"}, status_code=404)
             path = entry.source_path
             data = yaml.safe_load(path.read_text())
             data["system_prompt"] = new_prompt
-            path.write_text(
-                yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
-            )
+            path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False))
         except ImportError:
-            return JSONResponse(
-                {"error": "Prompt management not available"}, status_code=501
-            )
+            return JSONResponse({"error": "Prompt management not available"}, status_code=501)
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=500)
 
@@ -275,9 +273,7 @@ async def update_global_config(request: Request):
                     existing[section] = values
 
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(
-                yaml.dump(existing, default_flow_style=False, allow_unicode=True, sort_keys=False)
-            )
+            path.write_text(yaml.dump(existing, default_flow_style=False, allow_unicode=True, sort_keys=False))
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=500)
     except Exception as exc:
