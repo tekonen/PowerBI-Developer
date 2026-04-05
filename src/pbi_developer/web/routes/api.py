@@ -362,4 +362,6 @@ async def api_settings(request: Request):
         "page_height": cfg.pbir.default_page_height,
         "max_qa_retries": cfg.pipeline.max_qa_retries,
         "require_human_review": cfg.pipeline.require_human_review,
+        "supabase_configured": bool(cfg.supabase.url),
+        "supabase_url": cfg.supabase.url or "(not set)",
     }

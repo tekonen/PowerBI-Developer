@@ -21,7 +21,17 @@ async def page_login(request: Request):
 
     if not is_supabase_configured():
         return RedirectResponse("/", status_code=302)
-    return _get_templates().TemplateResponse(name="login.html", request=request)
+
+    from pbi_developer.config import settings
+
+    return _get_templates().TemplateResponse(
+        name="login.html",
+        request=request,
+        context={
+            "supabase_url": settings.supabase.url,
+            "supabase_anon_key": settings.supabase.anon_key,
+        },
+    )
 
 
 @router.get("/auth/callback")
