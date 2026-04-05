@@ -7,9 +7,13 @@ Authorization header and redirects unauthenticated users to /login.
 
 from __future__ import annotations
 
-from fastapi import Request
+import logging
+
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = logging.getLogger(__name__)
 
 _PUBLIC_PATHS = frozenset({"/login", "/auth/callback", "/health"})
 _PUBLIC_PREFIXES = ("/static/", "/auth/")
@@ -87,3 +91,54 @@ def get_current_user_id(request: Request) -> str | None:
     if user is None:
         return None
     return str(user.id)
+
+
+def is_user_admin(user_id: str) -> bool:
+    """Check whether *user_id* has admin privileges.
+
+    Queries the ``user_settings`` table for an ``is_admin`` column.  Returns
+    ``True`` in local mode (no Supabase configured) and ``False`` when the
+    column does not exist yet or any error occurs.
+    """
+    from pbi_developer.web.supabase_client import is_supabase_configured
+
+    if not is_supabase_configured():
+        return True
+
+    try:
+        from pbi_developer.web.supabase_client import get_service_client
+
+        client = get_service_client()
+        if client is None:
+            return False
+        row = (
+            client.table("user_settings")
+            .select("is_admin")
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        if row.data and row.data.get("is_admin"):
+            return True
+    except Exception:
+        logger.debug("is_user_admin check failed for %s", user_id, exc_info=True)
+    return False
+
+
+async def require_admin(request: Request):
+    """FastAPI dependency that restricts access to admin users.
+
+    Raises :class:`~fastapi.HTTPException` with status 403 when the
+    authenticated user is not an admin.
+    """
+    from pbi_developer.web.supabase_client import is_supabase_configured
+
+    # Local dev mode — always allow
+    if not is_supabase_configured():
+        return getattr(request.state, "user", None)
+
+    user = getattr(request.state, "user", None)
+    if user is None or not is_user_admin(str(user.id)):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    return user
