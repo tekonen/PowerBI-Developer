@@ -19,10 +19,30 @@ const SKIPPABLE_STEPS = ['dax', 'rls'];
 // ---------- Step Navigation ----------
 
 function showStep(step) {
+    const prevEl = document.getElementById('step-' + wizardCurrentStep);
     wizardCurrentStep = step;
-    document.querySelectorAll('.wizard-step').forEach(el => el.classList.add('hidden'));
-    const stepEl = document.getElementById('step-' + step);
-    if (stepEl) stepEl.classList.remove('hidden');
+    const nextEl = document.getElementById('step-' + step);
+
+    // Animate out previous step, then animate in new step
+    if (prevEl && prevEl !== nextEl && !prevEl.classList.contains('hidden')) {
+        prevEl.classList.add('step-exit');
+        setTimeout(() => {
+            prevEl.classList.add('hidden');
+            prevEl.classList.remove('step-exit');
+            if (nextEl) {
+                nextEl.classList.remove('hidden');
+                nextEl.classList.add('step-enter');
+                setTimeout(() => nextEl.classList.remove('step-enter'), 300);
+            }
+        }, 200);
+    } else {
+        document.querySelectorAll('.wizard-step').forEach(el => el.classList.add('hidden'));
+        if (nextEl) {
+            nextEl.classList.remove('hidden');
+            nextEl.classList.add('step-enter');
+            setTimeout(() => nextEl.classList.remove('step-enter'), 300);
+        }
+    }
 
     updateStepIndicator(step);
     updateActionBar(step);
@@ -640,6 +660,23 @@ document.getElementById('generate-form').addEventListener('submit', async (e) =>
     btn.textContent = 'Uploading...';
     btn.classList.add('opacity-50');
 
+    // Show upload progress bar
+    const progressWrap = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('upload-progress-bar');
+    const progressText = document.getElementById('upload-progress-text');
+    if (progressWrap) {
+        progressWrap.classList.remove('hidden');
+        progressBar.style.width = '0%';
+        // Animate progress to 80% over 3s while uploading
+        let pct = 0;
+        const progressTimer = setInterval(() => {
+            pct = Math.min(pct + 2, 80);
+            progressBar.style.width = pct + '%';
+        }, 75);
+        // Store timer so we can clear it
+        window._uploadProgressTimer = progressTimer;
+    }
+
     const formData = new FormData(form);
     formData.set('wizard', 'true');
     if (!form.querySelector('[name=dry_run]').checked) {
@@ -650,6 +687,11 @@ document.getElementById('generate-form').addEventListener('submit', async (e) =>
 
     try {
         const resp = await fetch('/api/runs', { method: 'POST', body: formData });
+        // Complete progress bar
+        if (window._uploadProgressTimer) clearInterval(window._uploadProgressTimer);
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressText) progressText.textContent = 'Upload complete!';
+        setTimeout(() => { if (progressWrap) progressWrap.classList.add('hidden'); }, 600);
         const data = await resp.json();
         if (data.error) {
             showWizardError(data.error);

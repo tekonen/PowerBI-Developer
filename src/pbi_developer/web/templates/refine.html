@@ -11,21 +11,28 @@
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Select Run</label>
             <select name="run_id" id="run-select" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                {% if not runs %}
+                <option value="" disabled selected>No completed runs yet — generate a report first</option>
+                {% else %}
+                <option value="" disabled selected>Choose a run...</option>
                 {% for run in runs %}
                 <option value="{{ run.run_id }}" {% if request.query_params.get('run_id') == run.run_id %}selected{% endif %}>
                     {{ run.run_id }} — {{ run.report_name }} ({{ run.status }})
                 </option>
                 {% endfor %}
+                {% endif %}
             </select>
             {% if not runs %}
-            <p class="text-sm text-gray-400 mt-2">No completed runs available. <a href="/generate" class="text-blue-600 hover:underline">Generate a report first.</a></p>
+            <p class="text-sm text-gray-400 mt-2">
+                <a href="/generate" class="text-blue-600 hover:underline">Generate a report</a> to start refining.
+            </p>
             {% endif %}
         </div>
 
         <!-- Stage selection -->
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Stage to Refine</label>
-            <div class="flex space-x-4">
+            <div class="flex flex-wrap gap-4">
                 {% for stage in ["wireframe", "field_mapping", "dax", "rls"] %}
                 <label class="flex items-center space-x-2 text-sm cursor-pointer">
                     <input type="radio" name="stage" value="{{ stage }}" {% if loop.first %}checked{% endif %} class="text-blue-600">
@@ -47,7 +54,7 @@
             <span>Dry Run</span>
         </label>
 
-        <button type="submit" id="refine-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium" {% if not runs %}disabled{% endif %}>
+        <button type="submit" id="refine-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium transition-opacity">
             Refine
         </button>
     </form>
@@ -63,11 +70,20 @@ document.getElementById('refine-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const btn = document.getElementById('refine-btn');
+    const runId = form.querySelector('[name=run_id]').value;
+
+    if (!runId) {
+        const select = form.querySelector('[name=run_id]');
+        select.classList.add('ring-2', 'ring-red-400');
+        select.focus();
+        setTimeout(() => select.classList.remove('ring-2', 'ring-red-400'), 2000);
+        return;
+    }
+
     btn.disabled = true;
     btn.textContent = 'Refining...';
     btn.classList.add('opacity-50');
 
-    const runId = form.querySelector('[name=run_id]').value;
     const body = {
         stage: form.querySelector('[name=stage]:checked').value,
         corrections: form.querySelector('[name=corrections]').value,
