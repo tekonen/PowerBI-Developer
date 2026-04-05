@@ -20,6 +20,12 @@ def _get_templates():
     return templates
 
 
+def _user_context(request: Request) -> dict:
+    """Extract user context for template rendering."""
+    user = getattr(request.state, "user", None)
+    return {"user_email": user.email if user else None}
+
+
 @router.get("/versions")
 async def page_versions(request: Request):
     mgr = _get_version_mgr()
@@ -31,6 +37,7 @@ async def page_versions(request: Request):
             "versions": versions,
             "can_redo": mgr.can_redo,
             "remote_url": mgr.get_remote(),
+            **_user_context(request),
         },
     )
 
