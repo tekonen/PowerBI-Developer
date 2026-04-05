@@ -34,6 +34,7 @@ CREATE TABLE public.user_settings (
     page_height INT DEFAULT 720,
     max_visuals_per_page INT DEFAULT 8,
     -- Metadata
+    is_admin BOOLEAN DEFAULT FALSE,
     onboarding_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
@@ -102,6 +103,27 @@ CREATE POLICY "Users can CRUD own run files"
     )
     WITH CHECK (
         run_id IN (SELECT r.run_id FROM public.runs r WHERE r.user_id = auth.uid())
+    );
+
+-- ============================================================
+-- Admin RLS policies: admins can read all users and runs
+-- ============================================================
+CREATE POLICY "Admins can read all user_settings"
+    ON public.user_settings FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.user_settings us
+            WHERE us.user_id = auth.uid() AND us.is_admin = TRUE
+        )
+    );
+
+CREATE POLICY "Admins can read all runs"
+    ON public.runs FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.user_settings us
+            WHERE us.user_id = auth.uid() AND us.is_admin = TRUE
+        )
     );
 
 -- ============================================================

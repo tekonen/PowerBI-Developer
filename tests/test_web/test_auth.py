@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import MagicMock, patch
 
-import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 
@@ -67,21 +64,27 @@ class TestRequireAdmin:
 
     @patch("pbi_developer.web.supabase_client.is_supabase_configured", return_value=False)
     def test_local_mode_allows_all(self, mock_configured):
+        import asyncio
+
         from pbi_developer.web.auth import require_admin
 
         request = MagicMock()
         request.state = MagicMock(spec=[])
-        result = asyncio.run(require_admin(request))
+        result = asyncio.get_event_loop().run_until_complete(require_admin(request))
         assert result is None
 
     @patch("pbi_developer.web.supabase_client.is_supabase_configured", return_value=True)
     def test_raises_403_when_no_user(self, mock_configured):
+        import asyncio
+
+        import pytest
+
         from pbi_developer.web.auth import require_admin
 
         request = MagicMock()
         request.state = MagicMock(spec=[])  # no user
-        with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(require_admin(request))
+        with pytest.raises(Exception) as exc_info:
+            asyncio.get_event_loop().run_until_complete(require_admin(request))
         assert exc_info.value.status_code == 403
 
 

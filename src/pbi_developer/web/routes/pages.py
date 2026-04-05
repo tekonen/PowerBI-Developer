@@ -127,3 +127,12 @@ async def page_settings(request: Request):
         request=request,
         context={"config": config, "user_config": user_config, **_user_context(request)},
     )
+
+
+@router.get("/admin")
+async def page_admin(request: Request):
+    return _get_templates().TemplateResponse(
+        name="admin.html",
+        request=request,
+        context={**_user_context(request)},
+    )
