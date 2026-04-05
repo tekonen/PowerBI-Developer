@@ -7,6 +7,7 @@ This module assembles the app from focused route modules:
 - routes/versions.py     — Version control routes
 - routes/auth_routes.py  — Login, register, OAuth callback, logout
 - routes/onboarding.py   — New-user onboarding wizard
+- routes/admin.py        — Admin API routes
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from pbi_developer.web.auth import AuthMiddleware
-from pbi_developer.web.routes import api, auth_routes, onboarding, pages, versions, wizard
+from pbi_developer.web.routes import admin, api, auth_routes, onboarding, pages, versions, wizard
 from pbi_developer.web.run_store import RunStore
 from pbi_developer.web.version_control import VersionManager
 
@@ -48,6 +49,7 @@ app.include_router(pages.router)
 app.include_router(api.router)
 app.include_router(wizard.router)
 app.include_router(versions.router)
+app.include_router(admin.router)
 
 
 # ---------- Helpers ----------
