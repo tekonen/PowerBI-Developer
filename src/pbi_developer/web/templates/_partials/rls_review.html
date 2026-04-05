@@ -1,35 +1,107 @@
-<!-- RLS configuration review panel -->
+<!-- Security configuration review panel (RLS + OLS) -->
 <div id="rls-review" class="hidden">
-    <h3 class="text-lg font-semibold mb-4">Row-Level Security</h3>
+    <h3 class="text-lg font-semibold mb-2">Security Configuration</h3>
+    <p class="text-sm text-gray-500 mb-4">Row-Level Security restricts which rows a user can see. Object-Level Security restricts which tables or columns are visible.</p>
 
-    <!-- Roles -->
-    <div id="rls-roles" class="space-y-4"></div>
-
-    <!-- Validation results -->
-    <div id="rls-validation-section" class="mt-6">
-        <h4 class="font-medium text-gray-700 mb-2">Validation Results</h4>
-        <table id="rls-validation-table" class="w-full text-sm border">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-3 py-2 text-left">User</th>
-                    <th class="px-3 py-2 text-left">Expected Access</th>
-                    <th class="px-3 py-2 text-left">Result</th>
-                    <th class="px-3 py-2 text-left">Status</th>
-                </tr>
-            </thead>
-            <tbody id="rls-validation-body"></tbody>
-        </table>
+    <!-- Sub-tab switcher -->
+    <div class="flex border-b border-gray-200 mb-4">
+        <button onclick="switchSecurityTab('rls')" id="sec-tab-rls"
+                class="px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px">
+            Row-Level Security
+        </button>
+        <button onclick="switchSecurityTab('ols')" id="sec-tab-ols"
+                class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
+            Object-Level Security
+        </button>
+        <button onclick="switchSecurityTab('test')" id="sec-tab-test"
+                class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
+            Test Access
+        </button>
     </div>
 
-    <!-- TMDL output -->
-    <div id="rls-tmdl-section" class="hidden mt-6">
-        <h4 class="font-medium text-gray-700 mb-2">TMDL Role Definition</h4>
-        <pre id="rls-tmdl-content" class="bg-gray-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto"></pre>
+    <!-- RLS Sub-tab -->
+    <div id="sec-panel-rls" class="sec-panel">
+        <h4 class="font-medium text-gray-700 mb-3">RLS Roles</h4>
+        <p class="text-xs text-gray-400 mb-3">DAX filter expressions that restrict row visibility per role.</p>
+        <div id="rls-roles" class="space-y-4"></div>
+
+        <!-- Validation results -->
+        <div id="rls-validation-section" class="mt-6">
+            <h4 class="font-medium text-gray-700 mb-2">Validation Results</h4>
+            <table id="rls-validation-table" class="w-full text-sm border">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-3 py-2 text-left">User</th>
+                        <th class="px-3 py-2 text-left">Expected Access</th>
+                        <th class="px-3 py-2 text-left">Result</th>
+                        <th class="px-3 py-2 text-left">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="rls-validation-body"></tbody>
+            </table>
+        </div>
+
+        <!-- TMDL output -->
+        <div id="rls-tmdl-section" class="hidden mt-6">
+            <h4 class="font-medium text-gray-700 mb-2">TMDL Role Definition</h4>
+            <pre id="rls-tmdl-content" class="bg-gray-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto"></pre>
+        </div>
+
+        <!-- Warnings -->
+        <div id="rls-warnings" class="hidden mt-4 bg-yellow-50 rounded-lg p-4">
+            <h4 class="font-medium text-yellow-700 mb-2">Warnings</h4>
+            <ul id="rls-warnings-list" class="text-sm space-y-1"></ul>
+        </div>
     </div>
 
-    <!-- Warnings -->
-    <div id="rls-warnings" class="hidden mt-4 bg-yellow-50 rounded-lg p-4">
-        <h4 class="font-medium text-yellow-700 mb-2">Warnings</h4>
-        <ul id="rls-warnings-list" class="text-sm space-y-1"></ul>
+    <!-- OLS Sub-tab -->
+    <div id="sec-panel-ols" class="sec-panel hidden">
+        <h4 class="font-medium text-gray-700 mb-3">Object-Level Security</h4>
+        <p class="text-xs text-gray-400 mb-3">Controls which tables and columns are visible to each role. Hidden objects return no data and are invisible in client tools.</p>
+
+        <div id="ols-rules" class="space-y-4">
+            <div class="text-sm text-gray-400 text-center py-6">No OLS rules configured. OLS rules will appear here when generated.</div>
+        </div>
+
+        <!-- OLS TMDL -->
+        <div id="ols-tmdl-section" class="hidden mt-6">
+            <h4 class="font-medium text-gray-700 mb-2">OLS Permission Definitions</h4>
+            <pre id="ols-tmdl-content" class="bg-gray-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto"></pre>
+        </div>
+    </div>
+
+    <!-- Test Access Sub-tab -->
+    <div id="sec-panel-test" class="sec-panel hidden">
+        <h4 class="font-medium text-gray-700 mb-3">Test Security with Sample Users</h4>
+        <p class="text-xs text-gray-400 mb-4">Enter a sample user identity to see what data they would be able to access under the current RLS and OLS rules.</p>
+
+        <!-- Add sample user form -->
+        <div class="bg-gray-50 rounded-lg p-4 border mb-4">
+            <div class="flex gap-3 items-end">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">User Email / UPN</label>
+                    <input type="text" id="test-user-email" placeholder="alice@company.com"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Expected Access (optional)</label>
+                    <input type="text" id="test-user-expected" placeholder="e.g. EMEA region only"
+                           class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button onclick="testSampleUser()" id="test-user-btn"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 whitespace-nowrap">
+                    Test Access
+                </button>
+            </div>
+        </div>
+
+        <!-- Test results -->
+        <div id="test-results" class="space-y-3"></div>
+
+        <!-- Quick test with existing validation users -->
+        <div id="test-existing-users" class="hidden mt-4">
+            <h5 class="text-sm font-medium text-gray-600 mb-2">Quick Test Existing Validation Users</h5>
+            <div id="test-existing-btns" class="flex flex-wrap gap-2"></div>
+        </div>
     </div>
 </div>

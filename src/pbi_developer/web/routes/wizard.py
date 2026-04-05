@@ -281,6 +281,73 @@ async def api_step_rls(request: Request, run_id: str):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+@router.post("/runs/{run_id}/step/rls/test")
+async def api_step_rls_test(request: Request, run_id: str):
+    """Test RLS/OLS rules against a sample user identity."""
+    store = _get_store_for_request(request)
+    run = store.get_run(run_id)
+    if not run:
+        return JSONResponse({"error": "Run not found"}, status_code=404)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    user_email = body.get("user_email", "")
+    expected_access = body.get("expected_access", "")
+    if not user_email:
+        return JSONResponse({"error": "user_email is required"}, status_code=400)
+
+    output_dir = store.get_output_dir(run_id)
+    artifacts = output_dir / "artifacts"
+    rls_path = artifacts / "rls_config.json"
+
+    if not rls_path.exists():
+        return JSONResponse({"error": "No security config found. Run the Security step first."}, status_code=400)
+
+    from pbi_developer.utils.files import read_json
+
+    rls_config = read_json(rls_path)
+
+    # Evaluate the user against RLS roles
+    rls_result_parts = []
+    for role in rls_config.get("roles", []):
+        filters = []
+        for tp in role.get("table_permissions", []):
+            filters.append(f"{tp.get('table', '?')}: {tp.get('filter_expression', '?')}")
+        rls_result_parts.append(f"Role '{role.get('role_name', '?')}': {'; '.join(filters) or 'no filters'}")
+
+    # Check against existing validation results
+    passed = None
+    explanation = ""
+    for v in rls_config.get("validation_results", []):
+        if v.get("example_user", "").lower() == user_email.lower():
+            passed = v.get("passed")
+            explanation = v.get("explanation", v.get("filter_result", ""))
+            break
+
+    # Evaluate OLS
+    ols_result_parts = []
+    for rule in rls_config.get("ols_rules", rls_config.get("ols", [])):
+        hidden = []
+        hidden.extend(rule.get("hidden_tables", []))
+        for c in rule.get("hidden_columns", []):
+            hidden.append(c if isinstance(c, str) else f"{c.get('table', '?')}.{c.get('column', '?')}")
+        if hidden:
+            role_name = rule.get("role_name", rule.get("name", "?"))
+            ols_result_parts.append(f"Role '{role_name}': hidden [{', '.join(hidden)}]")
+
+    return {
+        "user_email": user_email,
+        "expected_access": expected_access,
+        "passed": passed,
+        "rls_result": "; ".join(rls_result_parts) if rls_result_parts else "No RLS roles defined",
+        "ols_result": "; ".join(ols_result_parts) if ols_result_parts else "No OLS rules configured",
+        "explanation": explanation,
+    }
+
+
 @router.post("/runs/{run_id}/step/{stage}/correct")
 async def api_step_correct(request: Request, run_id: str, stage: str, req: StepCorrectRequest):
     """Re-run a wizard step with user corrections."""

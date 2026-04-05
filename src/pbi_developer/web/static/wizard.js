@@ -492,19 +492,46 @@ function renderPBIRResult(reportDir) {
     document.getElementById('pbir-path').textContent = typeof reportDir === 'string' ? reportDir : (reportDir?.report_dir || '');
 }
 
-function renderRLSConfig(rlsResult) {
-    const panel = document.getElementById('rls-review');
-    if (!panel || !rlsResult) return;
-    panel.classList.remove('hidden');
+// ---------- Security (RLS + OLS) ----------
 
-    // Render roles
+let _securityData = null;
+
+function switchSecurityTab(tab) {
+    ['rls', 'ols', 'test'].forEach(t => {
+        const panel = document.getElementById('sec-panel-' + t);
+        const btn = document.getElementById('sec-tab-' + t);
+        if (!panel || !btn) return;
+        if (t === tab) {
+            panel.classList.remove('hidden');
+            btn.className = 'px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px';
+        } else {
+            panel.classList.add('hidden');
+            btn.className = 'px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700';
+        }
+    });
+}
+
+function renderRLSConfig(result) {
+    const panel = document.getElementById('rls-review');
+    if (!panel || !result) return;
+    panel.classList.remove('hidden');
+    _securityData = result;
+
+    // --- RLS roles ---
     const rolesDiv = document.getElementById('rls-roles');
     rolesDiv.innerHTML = '';
-    (rlsResult.roles || []).forEach(role => {
+    const roles = result.roles || [];
+    if (roles.length === 0) {
+        rolesDiv.innerHTML = '<div class="text-sm text-gray-400 text-center py-4">No RLS roles defined.</div>';
+    }
+    roles.forEach(role => {
         const card = document.createElement('div');
         card.className = 'bg-gray-50 rounded-lg p-4 border';
         card.innerHTML = `
-            <h5 class="font-medium text-gray-800 mb-2">${role.role_name}</h5>
+            <div class="flex items-center gap-2 mb-2">
+                <h5 class="font-medium text-gray-800">${role.role_name}</h5>
+                <span class="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">RLS</span>
+            </div>
             ${role.description ? `<p class="text-sm text-gray-600 mb-2">${role.description}</p>` : ''}
             <div class="space-y-2">
                 ${(role.table_permissions || []).map(tp => `
@@ -519,10 +546,10 @@ function renderRLSConfig(rlsResult) {
         rolesDiv.appendChild(card);
     });
 
-    // Render validation results
+    // --- RLS Validation results ---
     const tbody = document.getElementById('rls-validation-body');
     tbody.innerHTML = '';
-    (rlsResult.validation_results || []).forEach(v => {
+    (result.validation_results || []).forEach(v => {
         const tr = document.createElement('tr');
         tr.className = 'border-t';
         tr.innerHTML = `
@@ -535,19 +562,231 @@ function renderRLSConfig(rlsResult) {
     });
 
     // TMDL output
-    if (rlsResult.tmdl_output) {
+    if (result.tmdl_output) {
         document.getElementById('rls-tmdl-section').classList.remove('hidden');
-        document.getElementById('rls-tmdl-content').textContent = rlsResult.tmdl_output;
+        document.getElementById('rls-tmdl-content').textContent = result.tmdl_output;
     }
 
     // Warnings
-    const warnings = rlsResult.warnings || [];
+    const warnings = result.warnings || [];
     if (warnings.length > 0) {
         document.getElementById('rls-warnings').classList.remove('hidden');
         document.getElementById('rls-warnings-list').innerHTML = warnings.map(w =>
             `<li class="text-yellow-700">${w}</li>`
         ).join('');
     }
+
+    // --- OLS rules ---
+    renderOLSRules(result.ols_rules || result.ols || []);
+
+    // OLS TMDL
+    if (result.ols_tmdl_output) {
+        document.getElementById('ols-tmdl-section').classList.remove('hidden');
+        document.getElementById('ols-tmdl-content').textContent = result.ols_tmdl_output;
+    }
+
+    // --- Test tab: populate quick-test buttons from validation users ---
+    const existingUsersDiv = document.getElementById('test-existing-users');
+    const btnsDiv = document.getElementById('test-existing-btns');
+    const validationUsers = (result.validation_results || []).filter(v => v.example_user);
+    if (validationUsers.length > 0) {
+        existingUsersDiv.classList.remove('hidden');
+        btnsDiv.innerHTML = validationUsers.map(v =>
+            `<button onclick="quickTestUser('${v.example_user.replace(/'/g, "\\'")}', '${(v.expected_access || '').replace(/'/g, "\\'")}')"
+                    class="px-3 py-1.5 bg-gray-100 border rounded-lg text-xs hover:bg-gray-200">
+                ${v.example_user}
+            </button>`
+        ).join('');
+    }
+}
+
+function renderOLSRules(olsRules) {
+    const rulesDiv = document.getElementById('ols-rules');
+    if (!olsRules || olsRules.length === 0) {
+        rulesDiv.innerHTML = '<div class="text-sm text-gray-400 text-center py-6">No OLS rules configured. OLS rules will appear here when generated.</div>';
+        return;
+    }
+
+    rulesDiv.innerHTML = '';
+    olsRules.forEach(rule => {
+        const card = document.createElement('div');
+        card.className = 'bg-gray-50 rounded-lg p-4 border';
+
+        const hiddenTables = rule.hidden_tables || [];
+        const hiddenColumns = rule.hidden_columns || [];
+
+        card.innerHTML = `
+            <div class="flex items-center gap-2 mb-2">
+                <h5 class="font-medium text-gray-800">${rule.role_name || rule.name || 'Unnamed'}</h5>
+                <span class="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">OLS</span>
+            </div>
+            ${rule.description ? `<p class="text-sm text-gray-600 mb-2">${rule.description}</p>` : ''}
+            ${hiddenTables.length > 0 ? `
+                <div class="mb-2">
+                    <div class="text-xs font-medium text-gray-500 mb-1">Hidden Tables</div>
+                    <div class="flex flex-wrap gap-1">
+                        ${hiddenTables.map(t => `<span class="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded">${t}</span>`).join('')}
+                    </div>
+                </div>
+            ` : ''}
+            ${hiddenColumns.length > 0 ? `
+                <div>
+                    <div class="text-xs font-medium text-gray-500 mb-1">Hidden Columns</div>
+                    <div class="flex flex-wrap gap-1">
+                        ${hiddenColumns.map(c => `<span class="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded">${typeof c === 'string' ? c : c.table + '.' + c.column}</span>`).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        `;
+        rulesDiv.appendChild(card);
+    });
+}
+
+function quickTestUser(email, expected) {
+    document.getElementById('test-user-email').value = email;
+    document.getElementById('test-user-expected').value = expected || '';
+    switchSecurityTab('test');
+    testSampleUser();
+}
+
+async function testSampleUser() {
+    const email = document.getElementById('test-user-email').value.trim();
+    const expected = document.getElementById('test-user-expected').value.trim();
+    if (!email) return;
+
+    const resultsDiv = document.getElementById('test-results');
+    const btn = document.getElementById('test-user-btn');
+    btn.disabled = true;
+    btn.textContent = 'Testing...';
+
+    // If we have a run, call the server to evaluate
+    if (wizardRunId) {
+        try {
+            const resp = await fetch(`/api/runs/${wizardRunId}/step/rls/test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_email: email, expected_access: expected }),
+            });
+            const data = await resp.json();
+            btn.disabled = false;
+            btn.textContent = 'Test Access';
+
+            if (data.error) {
+                // Fall back to client-side evaluation
+                renderClientSideTest(email, expected, resultsDiv);
+                return;
+            }
+            renderTestResult(email, expected, data, resultsDiv);
+            return;
+        } catch {
+            // Fall back to client-side evaluation
+        }
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Test Access';
+    renderClientSideTest(email, expected, resultsDiv);
+}
+
+function renderClientSideTest(email, expected, resultsDiv) {
+    if (!_securityData) {
+        resultsDiv.innerHTML = '<div class="text-sm text-gray-400">No security data available to test against.</div>';
+        return;
+    }
+
+    // Evaluate RLS: match user against validation_results
+    const rlsMatches = [];
+    (_securityData.roles || []).forEach(role => {
+        const perms = (role.table_permissions || []).map(tp => tp.table + ': ' + tp.filter_expression).join('; ');
+        rlsMatches.push({ role: role.role_name, description: role.description || '', filters: perms });
+    });
+
+    // Evaluate OLS: show what would be hidden
+    const olsMatches = [];
+    (_securityData.ols_rules || _securityData.ols || []).forEach(rule => {
+        const hidden = [
+            ...(rule.hidden_tables || []).map(t => 'Table: ' + t),
+            ...(rule.hidden_columns || []).map(c => 'Column: ' + (typeof c === 'string' ? c : c.table + '.' + c.column)),
+        ];
+        olsMatches.push({ role: rule.role_name || rule.name, hidden });
+    });
+
+    // Check against existing validation results
+    const validationMatch = (_securityData.validation_results || []).find(
+        v => v.example_user && v.example_user.toLowerCase() === email.toLowerCase()
+    );
+
+    const card = document.createElement('div');
+    card.className = 'bg-white border rounded-lg p-4';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <span class="font-medium text-gray-800">${email}</span>
+                ${expected ? `<span class="text-xs text-gray-400">Expected: ${expected}</span>` : ''}
+            </div>
+            ${validationMatch ? `
+                <span class="px-2 py-0.5 rounded text-xs font-medium ${validationMatch.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                    ${validationMatch.passed ? 'Pass' : 'Fail'}
+                </span>
+            ` : '<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">Simulated</span>'}
+        </div>
+        <div class="space-y-3">
+            <div>
+                <div class="text-xs font-medium text-gray-500 mb-1">Row-Level Security (RLS)</div>
+                ${rlsMatches.length > 0 ? rlsMatches.map(r => `
+                    <div class="bg-gray-50 rounded p-2 text-xs mb-1">
+                        <span class="font-medium">${r.role}</span>${r.description ? ' — ' + r.description : ''}
+                        <div class="text-gray-500 mt-0.5 font-mono">${r.filters || 'No filters'}</div>
+                    </div>
+                `).join('') : '<div class="text-xs text-gray-400">No RLS roles apply</div>'}
+            </div>
+            <div>
+                <div class="text-xs font-medium text-gray-500 mb-1">Object-Level Security (OLS)</div>
+                ${olsMatches.length > 0 ? olsMatches.map(o => `
+                    <div class="bg-gray-50 rounded p-2 text-xs mb-1">
+                        <span class="font-medium">${o.role}</span>
+                        ${o.hidden.length > 0 ? '<div class="text-red-600 mt-0.5">Hidden: ' + o.hidden.join(', ') + '</div>' : '<div class="text-gray-400 mt-0.5">No objects hidden</div>'}
+                    </div>
+                `).join('') : '<div class="text-xs text-gray-400">No OLS rules configured</div>'}
+            </div>
+            ${validationMatch ? `
+            <div>
+                <div class="text-xs font-medium text-gray-500 mb-1">Validation</div>
+                <div class="text-xs">${validationMatch.explanation || validationMatch.filter_result || 'No details'}</div>
+            </div>
+            ` : ''}
+        </div>
+    `;
+    resultsDiv.prepend(card);
+}
+
+function renderTestResult(email, expected, data, resultsDiv) {
+    const card = document.createElement('div');
+    const passed = data.passed !== false;
+    card.className = 'bg-white border rounded-lg p-4';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <span class="font-medium text-gray-800">${email}</span>
+                ${expected ? `<span class="text-xs text-gray-400">Expected: ${expected}</span>` : ''}
+            </div>
+            <span class="px-2 py-0.5 rounded text-xs font-medium ${passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                ${passed ? 'Pass' : 'Fail'}
+            </span>
+        </div>
+        <div class="space-y-2">
+            ${data.rls_result ? `<div>
+                <div class="text-xs font-medium text-gray-500 mb-1">RLS Access</div>
+                <div class="text-xs bg-gray-50 rounded p-2">${data.rls_result}</div>
+            </div>` : ''}
+            ${data.ols_result ? `<div>
+                <div class="text-xs font-medium text-gray-500 mb-1">OLS Visibility</div>
+                <div class="text-xs bg-gray-50 rounded p-2">${data.ols_result}</div>
+            </div>` : ''}
+            ${data.explanation ? `<div class="text-xs text-gray-600">${data.explanation}</div>` : ''}
+        </div>
+    `;
+    resultsDiv.prepend(card);
 }
 
 // ---------- Metadata Browser ----------
