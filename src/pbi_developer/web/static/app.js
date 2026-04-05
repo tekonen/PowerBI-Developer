@@ -1,7 +1,25 @@
 /**
  * Shared JavaScript for the PBI Developer web GUI.
- * Handles SSE connections, progress updates, and file browsing.
+ * Handles SSE connections, progress updates, sidebar, and file browsing.
  */
+
+// ---- Sidebar Toggle (mobile) ----
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (!sidebar) return;
+    sidebar.classList.toggle('open');
+    sidebar.classList.toggle('hidden');
+    if (overlay) overlay.classList.toggle('active');
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('open')) toggleSidebar();
+    }
+});
 
 // ---- SSE Client ----
 

@@ -11,14 +11,21 @@
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Select Completed Run</label>
             <select name="run_id" id="deploy-run-select" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                {% if not runs %}
+                <option value="" disabled selected>No completed runs yet — generate a report first</option>
+                {% else %}
+                <option value="" disabled selected>Choose a run...</option>
                 {% for run in runs %}
                 <option value="{{ run.output_path }}" {% if request.query_params.get('run_id') == run.run_id %}selected{% endif %}>
                     {{ run.run_id }} — {{ run.report_name }}
                 </option>
                 {% endfor %}
+                {% endif %}
             </select>
             {% if not runs %}
-            <p class="text-sm text-gray-400 mt-2">No completed runs available.</p>
+            <p class="text-sm text-gray-400 mt-2">
+                <a href="/generate" class="text-blue-600 hover:underline">Generate a report</a> to deploy.
+            </p>
             {% endif %}
         </div>
 
@@ -31,7 +38,7 @@
         <!-- Stage selection -->
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Deployment Stage</label>
-            <div class="flex space-x-4">
+            <div class="flex flex-wrap gap-4">
                 {% for s in ["dev", "test", "prod"] %}
                 <label class="flex items-center space-x-2 text-sm cursor-pointer">
                     <input type="radio" name="stage" value="{{ s }}" {% if s == "dev" %}checked{% endif %} class="text-blue-600">
@@ -41,7 +48,7 @@
             </div>
         </div>
 
-        <button type="submit" id="deploy-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium" {% if not runs %}disabled{% endif %}>
+        <button type="submit" id="deploy-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium transition-opacity">
             Deploy
         </button>
     </form>
@@ -57,11 +64,22 @@ document.getElementById('deploy-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const btn = document.getElementById('deploy-btn');
+    const reportDir = form.querySelector('[name=run_id]').value;
+
+    if (!reportDir) {
+        const select = form.querySelector('[name=run_id]');
+        select.classList.add('ring-2', 'ring-red-400');
+        select.focus();
+        setTimeout(() => select.classList.remove('ring-2', 'ring-red-400'), 2000);
+        return;
+    }
+
     btn.disabled = true;
     btn.textContent = 'Deploying...';
+    btn.classList.add('opacity-50');
 
     const body = {
-        report_dir: form.querySelector('[name=run_id]').value,
+        report_dir: reportDir,
         workspace_id: form.querySelector('[name=workspace_id]').value || null,
         stage: form.querySelector('[name=stage]:checked').value,
     };
@@ -86,6 +104,7 @@ document.getElementById('deploy-form').addEventListener('submit', async (e) => {
     }
     btn.disabled = false;
     btn.textContent = 'Deploy';
+    btn.classList.remove('opacity-50');
 });
 </script>
 {% endblock %}
