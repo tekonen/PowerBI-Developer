@@ -76,13 +76,22 @@
     <div id="step-ingestion" class="wizard-step hidden">
         <div class="bg-white rounded-lg shadow p-6">
             {% include "_partials/brief_review.html" %}
-            <div id="ingestion-loading" class="text-center py-8">
+            <div id="ingestion-loading" class="text-center py-8 hidden">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p class="text-sm text-gray-500 mt-2">Analyzing requirements...</p>
                 <div class="mt-4 max-w-md mx-auto space-y-2">
                     <div class="skeleton h-4 w-full"></div>
                     <div class="skeleton h-4 w-3/4"></div>
                     <div class="skeleton h-4 w-5/6"></div>
+                </div>
+            </div>
+            <div id="ingestion-skeleton" class="hidden py-8">
+                <p class="text-sm text-gray-400 mb-4 text-center">Requirements analysis will appear here</p>
+                <div class="max-w-md mx-auto space-y-3">
+                    <div class="skeleton h-5 w-2/3"></div>
+                    <div class="skeleton h-4 w-full"></div>
+                    <div class="skeleton h-4 w-5/6"></div>
+                    <div class="skeleton h-4 w-3/4"></div>
                 </div>
             </div>
         </div>
@@ -99,7 +108,7 @@
     <div id="step-wireframe" class="wizard-step hidden">
         <div class="bg-white rounded-lg shadow p-6">
             {% include "_partials/wireframe_mockup.html" %}
-            <div id="wireframe-loading" class="text-center py-8">
+            <div id="wireframe-loading" class="text-center py-8 hidden">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p class="text-sm text-gray-500 mt-2">Designing wireframe...</p>
                 <div class="mt-4 max-w-lg mx-auto space-y-3">
@@ -110,6 +119,21 @@
                     </div>
                 </div>
             </div>
+            <div id="wireframe-skeleton" class="hidden py-8">
+                <p class="text-sm text-gray-400 mb-4 text-center">Wireframe layout will appear here</p>
+                <div class="max-w-lg mx-auto space-y-3">
+                    <div class="skeleton h-32 w-full"></div>
+                    <div class="flex gap-3">
+                        <div class="skeleton h-20 flex-1"></div>
+                        <div class="skeleton h-20 flex-1"></div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="skeleton h-16 flex-1"></div>
+                        <div class="skeleton h-16 flex-1"></div>
+                        <div class="skeleton h-16 flex-1"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -117,11 +141,21 @@
     <div id="step-field_mapping" class="wizard-step hidden">
         <div class="bg-white rounded-lg shadow p-6">
             {% include "_partials/field_mapping_review.html" %}
-            <div id="field-mapping-loading" class="text-center py-8">
+            <div id="field-mapping-loading" class="text-center py-8 hidden">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p class="text-sm text-gray-500 mt-2">Mapping fields...</p>
                 <div class="mt-4 max-w-md mx-auto space-y-2">
                     <div class="skeleton h-8 w-full"></div>
+                    <div class="skeleton h-5 w-full"></div>
+                    <div class="skeleton h-5 w-full"></div>
+                    <div class="skeleton h-5 w-4/5"></div>
+                </div>
+            </div>
+            <div id="field-mapping-skeleton" class="hidden py-8">
+                <p class="text-sm text-gray-400 mb-4 text-center">Field mapping table will appear here</p>
+                <div class="max-w-md mx-auto space-y-2">
+                    <div class="skeleton h-8 w-full"></div>
+                    <div class="skeleton h-5 w-full"></div>
                     <div class="skeleton h-5 w-full"></div>
                     <div class="skeleton h-5 w-full"></div>
                     <div class="skeleton h-5 w-4/5"></div>
@@ -134,10 +168,17 @@
     <div id="step-dax" class="wizard-step hidden">
         <div class="bg-white rounded-lg shadow p-6">
             {% include "_partials/dax_review.html" %}
-            <div id="dax-loading" class="text-center py-8">
+            <div id="dax-loading" class="text-center py-8 hidden">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p class="text-sm text-gray-500 mt-2">Generating DAX measures...</p>
                 <div class="mt-4 max-w-md mx-auto space-y-2">
+                    <div class="skeleton h-24 w-full"></div>
+                    <div class="skeleton h-24 w-full"></div>
+                </div>
+            </div>
+            <div id="dax-skeleton" class="hidden py-8">
+                <p class="text-sm text-gray-400 mb-4 text-center">DAX measures will appear here</p>
+                <div class="max-w-md mx-auto space-y-3">
                     <div class="skeleton h-24 w-full"></div>
                     <div class="skeleton h-24 w-full"></div>
                 </div>
@@ -160,9 +201,15 @@
                     <ul id="qa-issues-list" class="mt-2 text-sm space-y-1"></ul>
                 </div>
             </div>
-            <div id="qa-loading" class="text-center py-8">
+            <div id="qa-loading" class="text-center py-8 hidden">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p class="text-sm text-gray-500 mt-2">Running QA validation...</p>
+            </div>
+            <div id="qa-skeleton" class="hidden py-8">
+                <p class="text-sm text-gray-400 mb-4 text-center">QA results will appear here</p>
+                <div class="max-w-md mx-auto">
+                    <div class="skeleton h-20 w-full"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -175,9 +222,15 @@
                 <h4 class="font-medium text-green-700">Report Generated</h4>
                 <p class="text-sm text-green-600 mt-1">Output directory: <code id="pbir-path"></code></p>
             </div>
-            <div id="pbir-loading" class="text-center py-8">
+            <div id="pbir-loading" class="text-center py-8 hidden">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p class="text-sm text-gray-500 mt-2">Generating PBIR output...</p>
+            </div>
+            <div id="pbir-skeleton" class="hidden py-8">
+                <p class="text-sm text-gray-400 mb-4 text-center">PBIR output will appear here</p>
+                <div class="max-w-md mx-auto">
+                    <div class="skeleton h-16 w-full"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -186,9 +239,16 @@
     <div id="step-rls" class="wizard-step hidden">
         <div class="bg-white rounded-lg shadow p-6">
             {% include "_partials/rls_review.html" %}
-            <div id="rls-loading" class="text-center py-8">
+            <div id="rls-loading" class="text-center py-8 hidden">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p class="text-sm text-gray-500 mt-2">Generating RLS configuration...</p>
+            </div>
+            <div id="rls-skeleton" class="hidden py-8">
+                <p class="text-sm text-gray-400 mb-4 text-center">RLS configuration will appear here</p>
+                <div class="max-w-md mx-auto space-y-3">
+                    <div class="skeleton h-20 w-full"></div>
+                    <div class="skeleton h-20 w-full"></div>
+                </div>
             </div>
         </div>
     </div>
